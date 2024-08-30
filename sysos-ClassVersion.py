@@ -14,14 +14,12 @@ import json
 from termcolor import *
 
 #Define variables
-vsn = "2.0.2 Beta"           #The SYSOS version
+vsn = "2.0.2-Beta"           #The SYSOS version
 
 ThrottleSpeed = 0       #How fast the computer can go through operations
 cfgvsn = 1.0            #The version of the configuration tool
-usrN = "SYSOS.User"     #The name of the user
 GITHUB = "https://github.com/jomielec/SYSOS/issues" #The name of the github repository
 FirstTimeRunning = True #Is this the first time the program has been run?
-prompt = colored(f"{usrN}@SYsos", "green") + colored(" $ ", "blue") #The prompt to be displayed
 modules = ["time", "random", "numpy", "json"]       #The list of used modules
 CurrentCommands = ["con", "move", "dir", "wipe", "bam", "ch", "make", "rmv", "run", "view", "sysos", "errtest"] #The list of the current commands being used
 
@@ -43,6 +41,12 @@ FILE_COLORS = {"Direc": "blue", "Text": "magenta", "Runable": "green"}          
 
 #Define system classes
 class necessaryFunctions():
+    # def updatePrompt(self, username, version):
+    #     """Updates the prompt to be displayed according to its formatted values
+    #     """
+    #     global prompt
+    #     prompt = colored(f"{username}@SYsos{version}", "green") + colored(" $ ", "blue")        #Update the prompt to be displayed
+
     def setCommandHelp(self):
         """
         Creates a dictionary of command names (in-case they change) and what they do
@@ -182,6 +186,7 @@ class necessaryFunctions():
                 return "continue"
             
     def changeUserName(self):
+        global usrN
         """Changes the username of the user.
         
         """
@@ -232,7 +237,7 @@ system = necessaryFunctions()
 typing = system.typingFunctions()
 
 #Load everything
-if "--skipBackup" not in sys.argv[0:]:
+if "--skipBackup" not in sys.argv[0:]:      #Run the system startup commands
     try:
         print(f"Loading SYSOS version {vsn}...")
         for i in tqdm(range (2), desc="Running systen scripts"): time.sleep(random.randint(0,2))
@@ -248,7 +253,8 @@ if "--skipBackup" not in sys.argv[0:]:
         else:
             OperatingSystem = "Unix"
             clear = "clr"
-        usrN = input(colored("Enter your username: ", "black", f"on_{cPrompt}"))
+        usrN = input(colored("Enter your username: ", "black", f"on_{cPrompt}"))        #Save the username to a variable
+        
 
     except Exception as e:
         system.reportError(message="Error while loading", code=e)
@@ -412,21 +418,23 @@ class changer():            #Default: ch
                 system.setCommandHelp()
 ch = changer()
 
-try:
+try:                        #Attempt to clear shell output
     if OperatingSystem == "Windows":
         os.system("cls")
     elif OperatingSystem == "Unix":
         os.system("clear")
-except Exception as e:
+except Exception as e:      #If unable, report error
     system.reportError("Unable to clear shell output.", code=e)
     system.write(colored(f"Maybe program was run with '{colored("--skipBackup", SystemOut)}{colored("' flag?", Error)}", Error))
 
 while True: 
     try:
+        prompt = colored(f"{usrN}@SYsos{vsn}", "green") + colored(" $ ", "blue")        #Update the prompt to be displayed
         response = input(prompt)
         if system.getFunction(response) not in CurrentCommands:
             system.CommandNotFound(response, errID="Invalid command!")
             system.didYouMean(item=response)
+
         elif system.getFunction(response) == CurrentCommands[0]:        #Default: Con
             try:
                 con.run()
@@ -458,7 +466,12 @@ while True:
                 system.reportError(message="Problem with sysos exit. (Sorry 'bout that!)", code=e)
 
         elif system.getFunction(response) == CurrentCommands[5]:        #Default: Ch
-            ch.run(response)
+            try:
+                ch.run(response)
+
+            except Exception as e:
+                system.reportError(message="Error detected during renaming process")
+
     except Exception as e:
         system.reportError(message="Error during matchmaking", code=e)
     except KeyboardInterrupt: #CTRL+C Pressed
