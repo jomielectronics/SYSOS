@@ -29,9 +29,9 @@ SysosCommands = ['con', 'move', 'dir', 'wipe', 'bam', 'ch', 'make', 'rmv', 'run'
 UnixCommands = ['ls', 'cd', 'pwd', 'clear', 'exit', 'ch', 'touch', 'rm', 'run', 'open', 'sysos']    #The list of (inactive) Unix commands for switching presets
 
 files = {'docs': ['/user/main', 'Direc'], 'Test.text': ['/user/main', 'Text'], 'user': ['/', 'Direc'], 'main': ['/user', 'Direc']}  #The internal files cache 
-if FirstTimeRunning:                    #If first time running…
+if FirstTimeRunning:                     #If first time running…
     with open('files.sysos', 'w+') as f: #then open files.sysos…
-        json.dump(files, f)             #and save the internal files to the disk
+        json.dump(files, f)              #and save the internal files to the disk
 
 
 Directory = '/user/main'    #Current directory
