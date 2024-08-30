@@ -19,6 +19,7 @@ vsn = "2.0.0 Beta"           #The SYSOS versionc
 ThrottleSpeed = 0       #How fast the computer can go through operations
 cfgvsn = 1.0            #The version of the configuration tool
 usrN = 'SYSOS.User'     #The name of the user
+GITHUB = "https://github.com/jomielec/SYSOS/issues" #The name of the github repository
 FirstTimeRunning = True #Is this the first time the program has been run?
 prompt = colored(f'{usrN}@SYsos', 'green') + colored(' $ ', 'blue') #The prompt to be displayed
 modules = ['time', 'random', 'numpy', 'json']       #The list of used modules
@@ -34,7 +35,7 @@ if FirstTimeRunning:                     #If first time running…
         json.dump(files, f)              #and save the internal files to the disk
 
 
-Directory = '/user/main'    #Current directory
+Directory = "/user/main"    #Current directory
 LsCache = {}                #Directory content (for the 'ls' command)
 
 OUTPUT_COLORS = {'Error': 'red', 'Warning': 'yellow', 'SystemOut': 'cyan', 'Advice': 'magenta', 'Other': 'white', 'cPrompt': 'dark_grey'}   #The colors for different types of output
@@ -111,7 +112,7 @@ class necessaryFunctions():
         Returns:
             RAW: a list of the arguments entered by the user.
         """
-        raw = idx.split()
+        raw = idx.split(' ')
         return raw[1:]
 
     def getFunction(self, idx):
@@ -148,7 +149,7 @@ class necessaryFunctions():
         Returns:
             None (null): I forget what this does
         """
-        print(colored(f"* FATAL INTERNAL ERROR!\n* PLEASE REPORT ISSUE ON GITHUB REPO (https://github.com/Arduinoz-R-Awsome/SYsos)\n* Exit status: <{message}> Compiler: <{code};> ", Error))
+        print(colored(f"* FATAL INTERNAL ERROR!\n* PLEASE REPORT ISSUE ON GITHUB REPO ({GITHUB})\n* Exit status: <{message}> Compiler: <{code};> ", Error))
         if exit == True:
             sys.exit(1)
         else:
@@ -293,7 +294,7 @@ class changeDirectory():    #Default: Move
         prompt = system.getArgs(destination)
         if prompt == []:
             system.write(colored(f'WARNING! Command \'{CurrentCommands[1]}\' needs a parameter', Warning))
-
+            type(Directory)
         elif ''.join(prompt) == 'up':
             tmp = Directory.split('/')
             del tmp[-1]
@@ -325,10 +326,6 @@ class makeFile():           #Default: Make
         listContents.list()
 newFile = makeFile()
 
-
-
-
-dir.move(destination='move up')
 while True:
     response = input(prompt)
     try:
@@ -340,11 +337,10 @@ while True:
 
         elif system.getFunction(response) == CurrentCommands[1]:    #Move
             try:
-                dir.move(destination=system.getArgs(response))
+                dir.move(destination=response)
             except Exception as e:
                 system.reportError(message="Error during directory transposition", code=e)
+                print(e)
         
     except Exception as e:
-        system.reportError(message="Error during matchmaking", code=e)
-
-        
+        system.reportError(message="Error during matchmaking", code=e)        
