@@ -14,7 +14,7 @@ import json
 from termcolor import *
 
 #Define variables
-vsn = "2.0.2-Beta"           #The SYSOS version
+vsn = "2.1.2-Beta"           #The SYSOS version
 
 ThrottleSpeed = 0       #How fast the computer can go through operations
 cfgvsn = 1.0            #The version of the configuration tool
