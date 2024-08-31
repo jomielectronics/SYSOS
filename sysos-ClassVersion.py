@@ -4,7 +4,7 @@ of an operating system, it is experimental and is made to spark
 your imagination. Please use it as such.
 """
 #Import necessary modules
-import time, random
+import time, random, traceback
 from tqdm import tqdm
 from os import system as run
 import os
@@ -22,15 +22,12 @@ GITHUB = "https://github.com/jomielec/SYSOS/issues" #The name of the github repo
 FirstTimeRunning = True #Is this the first time the program has been run?
 modules = ["time", "random", "numpy", "json"]       #The list of used modules
 CurrentCommands = ["con", "move", "dir", "wipe", "bam", "ch", "make", "rmv", "run", "view", "sysos", "errtest"] #The list of the current commands being used
-
+SupportedFileExtensions = [".text", ".txt"]                                                                     #The list of supported file extensions
 CmdPreset = "SYSOS Commands"    #The active command preset
 SysosCommands = ["con", "move", "dir", "wipe", "bam", "ch", "make", "rmv", "run", "open", "sysos"]  #The list of (inactive) default SYSOS commands for switching presets
 UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch", "touch", "rm", "run", "open", "sysos"]    #The list of (inactive) Unix commands for switching presets
 
-files = {"docs": ["/user/main", "Direc"], "Test.text": ["/user/main", "Text"], "user": ["/", "Direc"], "main": ["/user", "Direc"]}  #The internal files cache 
-if FirstTimeRunning:                     #If first time running…
-    with open("files.sysos", "w+") as f: #then open files.sysos…
-        json.dump(files, f)              #and save the internal files to the disk
+
 
 
 Directory = "/user/main"    #Current directory
@@ -240,11 +237,11 @@ typing = system.typingFunctions()
 if "--skipBackup" not in sys.argv[0:]:      #Run the system startup commands
     try:
         print(f"Loading SYSOS version {vsn}...")
-        for i in tqdm(range (2), desc="Running systen scripts"): time.sleep(random.randint(0,2))
+        for i in tqdm(range (2), desc="Running systen scripts", ascii=True): time.sleep(random.randint(0,2))
         system.setCommandHelp()
         system.update_Colors()
 
-        for i in tqdm(range (100), desc=f"Loading commands for {sys.platform} architectures..."): time.sleep(random.uniform(0.01, 0.02))
+        for i in tqdm(range (100), desc=f"Loading commands for {sys.platform} architectures...", ascii=True): time.sleep(random.uniform(0.01, 0.02))
         time.sleep(1)
         Computer = sys.platform
         if Computer == "win32":
@@ -263,7 +260,7 @@ else:
     system.update_Colors()
 
 #Define Function classes
-class listContents():       #Default: Con
+class listContents():       #Default: con
     def colorize(self, input):
         """Adds colors to the Ls() output, but it may work for other functions
         
@@ -280,16 +277,16 @@ class listContents():       #Default: Con
                 CTemp = input[index][key]
                 if CTemp == "Direc":
                     ColorFiles.append(colored(key, Direc))
-                elif CTemp == "Text":
+                elif CTemp == SupportedFileExtensions[0] or CTemp == SupportedFileExtensions[1]:
                     ColorFiles.append(colored(key, Text))
             index += 1
         return ColorFiles
     
-    def run(self, prt=True):
+    def run(self, prt=True, colors=False, showExtensions=False):
         """Saves the contents of the current directory to DirContent
 
         Args:
-            prt (bool, optional): If true, then it will print the contents as well. Defaults to True.
+            prt (bool, optional): If true, then it will print the contents as well as returning them. Defaults to True.
 
         Returns:
             List: Returns the contents of the current directory
@@ -303,6 +300,10 @@ class listContents():       #Default: Con
         #colorize(DirContent)
         #write(" ".join(ColorFiles))
         if prt:
+            if colors:
+                print(f"Text documents:\t {colored(Text.capitalize(), Text)}")
+                print(f"Directories:\t {colored(Direc.capitalize(), Direc)}\n")
+
             print(" ".join(self.colorize(DirContent)))
         else:
             return DirContent 
@@ -334,24 +335,6 @@ class CurrentDirectory():   #Default: dir
         """
         print(colored(Directory, SystemOut))
 dir = CurrentDirectory()
-
-class makeFile():           #Default: make
-    def run(self, i):
-        """Makes a file in the list of files, as well as a text file.
-
-        Args:
-            i (String): The desired file name.
-        """
-        try:
-            prompt = system.prompt
-            filen = f"{prompt[0]}.{prompt[1].lower()}"
-            files[filen] = list([Directory, prompt[1].capitalize()])
-            with open(f"{prompt[0]}.txt", "w") as f:
-                f.write(f"FILE CREATED AT {time.strftime("%Y-%m-%d %H:%M")}\n")
-        except IndexError:
-            files[f"{prompt[0]}"] = list([Directory, "Direc"])
-        listContents.run()
-make = makeFile()
 
 class clearOutput():        #Default: wipe
     def run(self):
@@ -418,6 +401,56 @@ class changer():            #Default: ch
                 system.setCommandHelp()
 ch = changer()
 
+class makeFile():           #Default: make
+    def run(self, ipt):
+        """Makes a file in the list of files, as well as a text file.
+
+        Args:
+            i (String): The desired file name.
+        """
+        WholeFile = system.getArgs(ipt)[0]
+        Name = WholeFile.split('.')[0]
+        try:
+            ValidExtensions = SupportedFileExtensions
+            Extension = str('.' + WholeFile.split('.')[1])
+            
+            if Extension not in ValidExtensions:
+                system.reportError(f"File does not have a valid extension.>\n* Please choose a valid extension: <{SupportedFileExtensions}", code=f"Invalid file extension: {Extension}")
+                
+            else:
+                # print(WholeFile, ''.join(WholeFile))
+
+                files[Name] = list([Directory, Extension])
+                con.run()
+                with open(''.join(WholeFile), "w") as f:
+                    f.write(f"FILE CREATED AT {time.strftime("%Y-%m-%d %H:%M")}\n")
+
+                with open("files.sysos", "w+") as f:
+                    json.dump(files, f)
+                
+                
+
+        except Exception:
+            files[f"{Name}"] = list([Directory, "Direc"])
+            con.run()
+            with open("files.sysos", "w+") as f:
+                json.dump(files, f)
+make = makeFile()
+
+class removeFile():         #Default: rmv
+    def run(self, file):
+        try:
+            if system.getArgs(file)[0] in files:
+                del files[system.getArgs(file)[0]]
+                with open("files.sysos", "w+") as f:
+                    json.dump(files, f)
+                con.run()
+            else:
+                system.write(colored(f'No such file or directory: {system.getArgs(file)[0]}', Error))
+        except IndexError:
+            system.write(colored(f'WARNING! Command \'{CurrentCommands[7]}\' needs a parameter', Warning))
+rmv = removeFile()
+
 try:                        #Attempt to clear shell output
     if OperatingSystem == "Windows":
         os.system("cls")
@@ -427,13 +460,39 @@ except Exception as e:      #If unable, report error
     system.reportError("Unable to clear shell output.", code=e)
     system.write(colored(f"Maybe program was run with '{colored("--skipBackup", SystemOut)}{colored("' flag?", Error)}", Error))
 
+try:
+    with open("files.sysos", "r") as f:
+        files = json.load(f)
+except FileNotFoundError:
+    system.write(colored("Could not load files from filesystem backup file.", Error),
+                 colored("Would you like to create a new archive instead? [y/N]", Error))
+    while True:
+        response = input('> ')
+        if response in ['y', 'N']: break
+        else: 
+            typing.typingPrint(colored("Invalid input!", Error)); 
+            time.sleep(1)
+            system.clearOutputLines(2)
+        if response == 'y':
+            sys.exit(1)
+        else:
+            continue
+    if response == 'y':
+        files = {"docs": ["/user/main", "Direc"], "Test": ["/user/main", ".txt"], "user": ["/", "Direc"], "main": ["/user", "Direc"]}  #The internal files cache 
+        with open('files.sysos', "w+") as f:
+            json.dump(files, f)
+    else:
+        system.reportError("SYSOS IS CORRUPTED! PLEASE DO NOT CONTINUE TO USE, YOU MAY DAMAGE YOUR SYSTEM!", code="Backup file not found")
+
+
 while True: 
     try:
-        prompt = colored(f"{usrN}@SYsos{vsn}", "green") + colored(" $ ", "blue")        #Update the prompt to be displayed
+        prompt = colored(f"{usrN}@SYsos{colored(vsn, 'light_cyan')}", "green") + colored(" $ ", "blue")        #Update the prompt to be displayed
         response = input(prompt)
+
         if system.getFunction(response) not in CurrentCommands:
             system.CommandNotFound(response, errID="Invalid command!")
-            system.didYouMean(item=response)
+            print(system.didYouMean(response))
 
         elif system.getFunction(response) == CurrentCommands[0]:        #Default: Con
             try:
@@ -471,6 +530,18 @@ while True:
 
             except Exception as e:
                 system.reportError(message="Error detected during renaming process")
+
+        elif system.getFunction(response) == CurrentCommands[6]:        #Default: Make
+            try:
+                make.run(response)
+            except Exception as e:
+                system.reportError(message="Unable to touch file, (\"Can't touch this.\")", code=e)
+
+        elif system.getFunction(response) == CurrentCommands[7]:        #Default: Rmv
+            try:
+                rmv.run(response)
+            except Exception as e:
+                system.reportError(message="Error detected file deletion", code=e)
 
     except Exception as e:
         system.reportError(message="Error during matchmaking", code=e)
