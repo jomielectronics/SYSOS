@@ -451,6 +451,19 @@ class removeFile():         #Default: rmv
             system.write(colored(f'WARNING! Command \'{CurrentCommands[7]}\' needs a parameter', Warning))
 rmv = removeFile()
 
+class runCommand():         #Default: run
+    def run(self, command):
+        """Runs the inputted command in the system shell.
+
+        Args:
+            command (str): The raw shell input
+        """
+        if system.getArgs(command) != []:
+                run(' '.join(system.getArgs(command)))
+        else:
+            system.write(colored(f'WARNING! Command \'{CurrentCommands[8]}\' needs a parameter', Warning))
+runCmd = runCommand()
+
 try:                        #Attempt to clear shell output
     if OperatingSystem == "Windows":
         os.system("cls")
@@ -542,6 +555,12 @@ while True:
                 rmv.run(response)
             except Exception as e:
                 system.reportError(message="Error detected file deletion", code=e)
+
+        elif system.getFunction(response) == CurrentCommands[8]:        #Default: Run
+            try:
+                runCmd.run(response)
+            except Exception as e:
+                system.reportError(message="Unable to run desired command in system shell", code=e)
 
     except Exception as e:
         system.reportError(message="Error during matchmaking", code=e)
