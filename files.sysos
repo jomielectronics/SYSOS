@@ -1,1 +1,1 @@
-{"docs": ["/user/main", "Direc"], "Test": ["/user/main", ".txt"], "user": ["/", "Direc"], "main": ["/user", "Direc"], "code": ["/user/main/mydir", ".text"], "EvenMoreDir": ["/user/main/mydir", "Direc"], "index": ["/user/main/mydir/EvenMoreDir", ".text"]}
+{"docs": ["/user/main", "Direc"], "Test": ["/user/main", ".txt"], "user": ["/", "Direc"], "main": ["/user", "Direc"], "code": ["/user/main/mydir", ".text"], "EvenMoreDir": ["/user/main/mydir", "Direc"], "index": ["/user/main/mydir/EvenMoreDir", ".text"], "fart": ["/user/main", ".text"]}

@@ -4,7 +4,8 @@ of an operating system, it is experimental and is made to spark
 your imagination. Please use it as such.
 """
 #Import necessary modules
-import time, random, traceback
+import time, random
+import pyautogui as typer
 from tqdm import tqdm
 from os import system as run
 import os
@@ -250,7 +251,15 @@ if "--skipBackup" not in sys.argv[0:]:      #Run the system startup commands
         else:
             OperatingSystem = "Unix"
             clear = "clr"
-        usrN = input(colored("Enter your username: ", "black", f"on_{cPrompt}"))        #Save the username to a variable
+        try:
+            with open("user.sysos", "r+") as f:
+                global usrN
+                temp = json.load(f)
+                usrN = temp["Username"]
+        except Exception:
+            with open("user.sysos", "w+") as f:
+                usrN = input(colored("Enter your username: ", "black", f"on_{cPrompt}"))        #Save the username to a variable
+                json.dump({"Username": usrN}, f)
         
 
     except Exception as e:
@@ -464,6 +473,16 @@ class runCommand():         #Default: run
             system.write(colored(f'WARNING! Command \'{CurrentCommands[8]}\' needs a parameter', Warning))
 runCmd = runCommand()
 
+class ViewFile():           #Default: view
+    def run(self, ipt):
+        fileToView = system.getArgs(ipt)[0]
+        with open(fileToView, 'r') as f:
+            print(f.read())
+
+        if fileToView not in files.keys():
+            system.reportError("File does not exits")
+view = ViewFile()
+
 try:                        #Attempt to clear shell output
     if OperatingSystem == "Windows":
         os.system("cls")
@@ -561,6 +580,12 @@ while True:
                 runCmd.run(response)
             except Exception as e:
                 system.reportError(message="Unable to run desired command in system shell", code=e)
+
+        elif system.getFunction(response) == CurrentCommands[9]:        #Default: View
+            try:
+                view.run(response)
+            except Exception as e:
+                system.reportError(message="Unable to locate file", code=e)
 
     except Exception as e:
         system.reportError(message="Error during matchmaking", code=e)
