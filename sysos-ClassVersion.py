@@ -449,13 +449,16 @@ make = makeFile()
 class removeFile():         #Default: rmv
     def run(self, file):
         try:
-            if system.getArgs(file)[0] in files:
-                del files[system.getArgs(file)[0]]
+            if system.getArgs(file)[0].split('.')[0] in files and f'.{system.getArgs(file)[0].split('.')[1]}' in files[system.getArgs(file)[0].split('.')[0]][1]:
+                del files[system.getArgs(file)[0].split('.')[0]]
+                os.remove(' '.join(system.getArgs(file)))
                 with open("files.sysos", "w+") as f:
                     json.dump(files, f)
                 con.run()
             else:
                 system.write(colored(f'No such file or directory: {system.getArgs(file)[0]}', Error))
+                print(system.getArgs(file)[0].split('.')[0])
+                print(files[system.getArgs(file)[0].split('.')[0]][1])
         except IndexError:
             system.write(colored(f'WARNING! Command \'{CurrentCommands[7]}\' needs a parameter', Warning))
 rmv = removeFile()
@@ -573,7 +576,7 @@ while True:
             try:
                 rmv.run(response)
             except Exception as e:
-                system.reportError(message="Error detected file deletion", code=e)
+                system.reportError(message="Error detected during file deletion", code=e)
 
         elif system.getFunction(response) == CurrentCommands[8]:        #Default: Run
             try:
