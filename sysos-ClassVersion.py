@@ -6,6 +6,7 @@ your imagination. Please use it as such.
 #Import necessary modules
 import time, random
 import pyautogui as typer
+from pynput import keyboard
 from tqdm import tqdm
 from os import system as run
 import os
@@ -27,7 +28,8 @@ SupportedFileExtensions = [".text", ".txt"]                                     
 CmdPreset = "SYSOS Commands"    #The active command preset
 SysosCommands = ["con", "move", "dir", "wipe", "bam", "ch", "make", "rmv", "run", "open", "sysos"]  #The list of (inactive) default SYSOS commands for switching presets
 UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch", "touch", "rm", "run", "open", "sysos"]    #The list of (inactive) Unix commands for switching presets
-
+global History
+History = []    #The list of commands that have been entered
 
 
 
@@ -357,6 +359,8 @@ wipe = clearOutput()
 
 class endProgram():         #Default: bam
     def run(self):
+        listener.join()
+        listener.stop()
         raise SystemExit
 bam = endProgram()
 
@@ -457,8 +461,7 @@ class removeFile():         #Default: rmv
                 con.run()
             else:
                 system.write(colored(f'No such file or directory: {system.getArgs(file)[0]}', Error))
-                print(system.getArgs(file)[0].split('.')[0])
-                print(files[system.getArgs(file)[0].split('.')[0]][1])
+
         except IndexError:
             system.write(colored(f'WARNING! Command \'{CurrentCommands[7]}\' needs a parameter', Warning))
 rmv = removeFile()
@@ -485,6 +488,25 @@ class ViewFile():           #Default: view
         if fileToView not in files.keys():
             system.reportError("File does not exits")
 view = ViewFile()
+
+class HistoryManager():
+    
+    def add2history(self, command):
+        History.append(command)
+    
+    def on_press(self, key):
+        try:
+            if key == keyboard.Key.up:                      # Check if the pressed key is the Up Arrow key
+                typer.typewrite('up')
+            elif key == keyboard.Key.down:                  # Check if the pressed key is the Down Arrow key
+                typer.typewrite('down')
+        except AttributeError:
+            pass  # Handle special keys that don't have a char attribute
+scrollth = HistoryManager()
+
+listener = keyboard.Listener(on_press=scrollth.on_press)
+listener.start()
+
 
 try:                        #Attempt to clear shell output
     if OperatingSystem == "Windows":
@@ -592,7 +614,7 @@ while True:
 
     except Exception as e:
         system.reportError(message="Error during matchmaking", code=e)
-    except KeyboardInterrupt: #CTRL+C Pressed
+    except KeyboardInterrupt: #CTRL+C Pressed 
         system.write(colored("CTRL+C pressed, data may be lost in case of improper shutdown!", Error), 
                      colored(f"The proper way to shutdown is run '{colored(CurrentCommands[4], SystemOut)}{colored("' in the console!", Error)}", Error), 
                      colored("Are you sure you want to continue? [y/N]", Error))
