@@ -16,7 +16,7 @@ import json
 from termcolor import *
 
 #Define variables
-vsn = "2.1.2-Beta"           #The SYSOS version
+vsn = "0.2.1-Beta"           #The SYSOS version
 
 ThrottleSpeed = 0       #How fast the computer can go through operations
 cfgvsn = 1.0            #The version of the configuration tool
@@ -497,15 +497,18 @@ class HistoryManager():
     def on_press(self, key):
         try:
             if key == keyboard.Key.up:                      # Check if the pressed key is the Up Arrow key
-                typer.typewrite('up')
+                system.clearOutputLines('a')
+                input(colored(f"{usrN}@SYsos{colored(vsn, 'light_cyan')}", "green") + colored(" $ ", "blue"))
+                typer.typewrite("up")
             elif key == keyboard.Key.down:                  # Check if the pressed key is the Down Arrow key
-                typer.typewrite('down')
+                system.clearOutputLines('a')
+                typer.typewrite("down")
         except AttributeError:
             pass  # Handle special keys that don't have a char attribute
-scrollth = HistoryManager()
+# scrollth = HistoryManager()
 
-listener = keyboard.Listener(on_press=scrollth.on_press)
-listener.start()
+# listener = keyboard.Listener(on_press=scrollth.on_press)
+# listener.start()
 
 
 try:                        #Attempt to clear shell output

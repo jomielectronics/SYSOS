@@ -4,7 +4,7 @@ of an operating system, it is experimental and is made to spark
 your imagination. Please use it as such.
 """
 #Define variables
-vsn = "1.2.0"
+vsn = "0.1.2"
 ThrottleSpeed = 0
 cfgvsn = 1.0
 tasks = ['Clearing output...', 'Loading files...', 'Creating PWDs...', 'Opening \'VirusKiller.op\'...', 'Loading index buffer...', 'Loading \'CMDs.pTx\'...']
