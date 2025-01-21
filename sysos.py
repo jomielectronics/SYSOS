@@ -1,634 +1,820 @@
-"""
-This code below is not made to replace the full functionality 
-of an operating system, it is experimental and is made to spark 
-your imagination. Please use it as such.
-"""
-#Import necessary modules
-import time, random
+# -----------------------------
+# IMPORT NECESSARY MODULES
+# -----------------------------
+import time
+import random
 import pyautogui as typer
+from dataclasses import dataclass
 from pynput import keyboard
 from tqdm import tqdm
-from os import system as run
+from os import system as run, listdir
 import os
 import sys
 import difflib
 import json
 from termcolor import *
+import subprocess
+import shutil
+# -----------------------------
+# DEFINE VARIABLES
+# -----------------------------
+vsn = "0.3.1"  # The SYSOS version
+ThrottleSpeed = 0  # Speed for processing operations
+cfgvsn = 1.0  # Configuration tool version
+GITHUB = "https://github.com/jomielec/SYSOS/issues"  # GitHub repository link
+FirstTimeRunning = True  # Is this the first run of the program?
+username = os.environ.get("LOGNAME") or os.environ.get(
+    "USER") or os.environ.get("USERNAME")
 
-#Define variables
-vsn = "0.2.1-Beta"           #The SYSOS version
+# Modules and commands
+modules = ["time", "random", "pyautogui", "pynput", "tqdm", "os", "sys",
+           "difflib", "json", "termcolor", "dataclasses", "subprocess", "shutil"]
+CurrentCommands = ["con", "move", "dir", "wipe", "bam", "ch",
+                   "make", "rmv", "rmvdir", "run", "view", "sysos", "errtest"]
+CmdPreset = "SYSOS Commands"  # Current active command preset
+SysosCommands = ["con", "move", "dir", "wipe", "bam", "ch",
+                 "make", "rmv", "run", "open", "sysos"]  # Default SYSOS commands
+UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch",
+                "touch", "rm", "run", "open", "sysos"]  # Unix commands
 
-ThrottleSpeed = 0       #How fast the computer can go through operations
-cfgvsn = 1.0            #The version of the configuration tool
-GITHUB = "https://github.com/jomielec/SYSOS/issues" #The name of the github repository
-FirstTimeRunning = True #Is this the first time the program has been run?
-modules = ["time", "random", "numpy", "json"]       #The list of used modules
-CurrentCommands = ["con", "move", "dir", "wipe", "bam", "ch", "make", "rmv", "run", "view", "sysos", "errtest"] #The list of the current commands being used
-SupportedFileExtensions = [".text", ".txt"]                                                                     #The list of supported file extensions
-CmdPreset = "SYSOS Commands"    #The active command preset
-SysosCommands = ["con", "move", "dir", "wipe", "bam", "ch", "make", "rmv", "run", "open", "sysos"]  #The list of (inactive) default SYSOS commands for switching presets
-UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch", "touch", "rm", "run", "open", "sysos"]    #The list of (inactive) Unix commands for switching presets
-global History
-History = []    #The list of commands that have been entered
+# System settings
+Directory = "/Users/Micah"  # Current directory
+LsCache = {}  # Cache for directory content (used by "ls" command)
+History = []  # History of executed commands
+running = True
+
+# Output and file colors
+OUTPUT_COLORS = {
+    "Error": "red",
+    "Warning": "orange",
+    "SystemOut": "yellow",
+    "Advice": "magenta",
+    "Other": "white",
+    "cPrompt": "dark_grey"
+}
+FILE_COLORS = {
+    "Direc": "blue",
+    "Text": "magenta",
+    "Program": "green",
+    "Other": "yellow"
+}
+
+error_codes = {
+    "SUCCESS": 0,                     # The program executed successfully without errors.
+    "GEN_ERR": 1,                     # General Error (catch-all for unspecified errors).
+    "BAD_BUILTIN": 2,                 # Misuse of Shell Built-ins (incorrect usage of shell commands).
+    "INV_ARG": 3,                     # Invalid Argument (invalid input passed to the program).
+    "FILE_NOT_FOUND": 4,              # The required file or resource was not found.
+    "IO_ERR": 5,                      # Input/Output Error (failure in file or device operation).
+    "CONFIG_ERR": 6,                  # Configuration Error (issue with configuration settings).
+    "AUTH_FAIL": 7,                   # Authentication Failed (incorrect credentials).
+    "OUT_OF_MEM": 8,                  # Out of Memory (program couldn't allocate memory).
+    "RES_LIMIT_EXCEEDED": 9,          # Resource Limit Exceeded (e.g., too many open files).
+    "TIMEOUT": 10,                    # Timeout (operation exceeded its allowed time).
+    "CONFLICT": 11,                   # Conflict (e.g., conflicting processes or states).
+    "INT_APP_ERR_UNHANDLED": 50,      # Internal Application Error - Unhandled Exception.
+    "DIR_NOT_FOUND": 51,              # Directory Not Found (specific directory missing).
+    "INVALID_PERM": 52,               # Invalid File Permissions (lack of read/write access).
+    "DEP_NOT_FOUND": 53,              # Dependency Not Found (required library or resource missing).
+    "PERM_DENIED": 126,               # Permission Denied (lack of necessary permissions).
+    "CMD_NOT_FOUND": 127,             # Command Not Found (command not recognized).
+    "INV_EXIT_ARG": 128,              # Invalid Exit Argument (invalid argument passed on exit).
+    "CTRL_C_TERM": 130,               # Terminated by Ctrl+C (Signal 2 - SIGINT, user interrupt).
+    "KILL_TERM": 137,                 # Terminated by kill -9 (Signal 9 - SIGKILL, force kill).
+    "SEG_FAULT": 139                  # Segmentation Fault (Signal 11 - SIGSEGV, memory error).
+}
+
+# -----------------------------
+# DEFINE CUSTOM ERRORS
+# -----------------------------
 
 
+@dataclass
+class CustomError:
+    """A simple object to represent an error."""
+    # type: str  # Type of the error (e.g., 'NotFound', 'Validation')
+    message: str  # A human-readable error message
+    code: int  # The error code
 
-Directory = "/user/main"    #Current directory
-LsCache = {}                #Directory content (for the "ls" command)
 
-OUTPUT_COLORS = {"Error": "red", "Warning": "yellow", "SystemOut": "cyan", "Advice": "magenta", "Other": "white", "cPrompt": "dark_grey"}   #The colors for different types of output
-FILE_COLORS = {"Direc": "blue", "Text": "magenta", "Runable": "green"}                                                                      #The colors for different types of files
+ImpliedDirectory = CustomError(
+    "This error is for internal use only.", error_codes["SUCCESS"])
+DirectoryNonexistent = CustomError(
+    "Directory doesn't exist.", error_codes["DIR_NOT_FOUND"])
+InsufficientPermission = CustomError(
+    "Lack of permissions", error_codes["PERM_DENIED"])
+FileNonexistent = CustomError(
+    "File doesn't exist", error_codes["FILE_NOT_FOUND"])
+UnknownError = CustomError("An unknown error occurred", error_codes["GEN_ERR"])
+UnsupportedFile = CustomError(
+    "This file type is not supported", error_codes["INV_ARG"])
+UserInterrupt = CustomError(
+    "Program interrupted by user", error_codes["CTRL_C_TERM"])
+NonexistentParameter = CustomError(
+    "A parameter was needed, but not found.", error_codes["BAD_BUILTIN"])
 
-#Define system classes
-class necessaryFunctions():
-    # def updatePrompt(self, username, version):
-    #     """Updates the prompt to be displayed according to its formatted values
-    #     """
-    #     global prompt
-    #     prompt = colored(f"{username}@SYsos{version}", "green") + colored(" $ ", "blue")        #Update the prompt to be displayed
+# -----------------------------
+# DEFINE SYSTEM CLASSES
+# -----------------------------
+
+
+class necessaryFunctions:
+    def updatePrompt(self):
+        global Prompt
+        Prompt = colored(f"{username}", "light_green") + "@" + colored(f"SYSOS",
+                                                                       "dark_grey") + " \u276f " + colored(Directory, Direc) + " \u276f " + "$ "
 
     def setCommandHelp(self):
-        """
-        Creates a dictionary of command names (in-case they change) and what they do
-        """
+        """Creates a dictionary of command names and their descriptions."""
         global CMDHelp
-        CMDHelp = {CurrentCommands[0]: "Lists the contents of the current directory", 
-                CurrentCommands[1]: "Changes the current directory", 
-                CurrentCommands[2]: "Lists the current directory", 
-                CurrentCommands[3]: "Clears the system output", 
-                CurrentCommands[4]: "Returns to your default terminal", 
-                CurrentCommands[5]: "A generic command that can: \n- Rename documents \n- Edit the commands\n- Change your username", 
-                CurrentCommands[6]: "This command can make files and folders", 
-                CurrentCommands[7]: "Can delete any thing from files to folders", 
-                CurrentCommands[8]: "Runs the command entered in the default terminal", 
-                CurrentCommands[9]: "Displays the contents of a file",
-                CurrentCommands[11]: "Runs the sub-routines that catch errors, in order to ensure functionality. \nGood to run every once and a while."}
-        
-    def clearOutputLines(self, lines):
-        if lines == 'a':
-            if str(sys.platform) == "win32":
-                os.system("cls")
-            else:
-                os.system("clear")
+        CMDHelp = {
+            CurrentCommands[0]: "Lists the contents of the current directory",
+            CurrentCommands[1]: "Changes the current directory",
+            CurrentCommands[2]: "Lists the current directory",
+            CurrentCommands[3]: "Clears the system output",
+            CurrentCommands[4]: "Returns to your default terminal",
+            CurrentCommands[5]: "A generic command for renaming, editing commands, or changing username",
+            CurrentCommands[6]: "Creates files and folders",
+            CurrentCommands[7]: "Deletes files or folders",
+            CurrentCommands[8]: "Executes commands in the default terminal",
+            CurrentCommands[9]: "Displays the contents of a file",
+            CurrentCommands[11]: "Runs error-catching subroutines to ensure functionality"
+        }
+
+    def clearOutputLines(self, lines=0):
+        """Clears console output. Clears all lines if `lines` is 0."""
+        if lines == 0:
+            os.system("clear")
         else:
-            for i in range(0, int(lines)):
-                print ("\033[A                             \033[A")
+            for _ in range(lines):
+                print("\033[A\033[2K", end="")
 
     def update_Colors(self):
-        """
-        This function updates each variable with the current color for that type.
-        """
-        global Error, Warning, SystemOut, Advice, Other, cPrompt, Direc, Text, Runable
-        #Colors:
+        """Updates global variables with current output and file colors."""
+        global Error, Warning, SystemOut, Advice, Other, cPrompt, Direc, Text, Program, Other
         Error = OUTPUT_COLORS["Error"]
         Warning = OUTPUT_COLORS["Warning"]
         SystemOut = OUTPUT_COLORS["SystemOut"]
         Advice = OUTPUT_COLORS["Advice"]
         Other = OUTPUT_COLORS["Other"]
         cPrompt = OUTPUT_COLORS["cPrompt"]
-        #File colors:
+        # File Colors:
         Direc = FILE_COLORS["Direc"]
         Text = FILE_COLORS["Text"]
-        Runable = FILE_COLORS["Runable"]
-
-    def CommandNotFound(self, ipt, errID="Invalid CMD Error"):
-        print(colored("*", Error))
-        print(colored(f"*{errID}!", Error))
-        print(colored(f"*Command \"{ipt}\" not found.", Error))
-        print(colored("*         ", Error), end="")
-        for i in range(0, len(ipt)):
-            print(colored("^", Error), end="")
-        print()
-        print(colored("*", Error))
+        Program = FILE_COLORS["Program"]
+        Other = FILE_COLORS["Other"]
 
     def didYouMean(self, item, matches=CurrentCommands):
-        """Returns a colored message if `item` is not found in the list of commands.
-
-        Args:
-            item (string): The misspelled command.
-            matches (list, optional): The list of options to choose from. Defaults to Commands.
-
-        Returns:
-            String: The colored error message.
-        """
+        """Suggests similar commands when input is invalid."""
         fix = difflib.get_close_matches(item, matches)
-        if fix != []:
-            return colored("Maybe you meant '" + colored(', '.join(fix), Advice, attrs=["bold"])+ colored("'?", Advice), Advice, attrs=[])
-        else:
-            return colored("No fixes available.", Advice)
+        if fix:
+            return colored(f"Maybe you meant '{', '.join(fix)}'?", Advice)
+        return colored("No fixes available.", Advice)
 
     def getArgs(self, idx):
-        """ Gets the arguments of a given prompt.
-
-        Args:
-            idx (string): The input entered by the user.
-
-        Returns:
-            RAW: a list of the arguments entered by the user.
-        """
-        raw = idx.split(" ")
-        return raw[1:]
+        """Extracts arguments from a user input string."""
+        return idx.split(" ")[1:]
 
     def getFunction(self, idx):
-        """ Gets the function of a given prompt.
+        """Extracts the command (function) from a user input string."""
+        return idx.split()[0]
 
-        Args:
-            idx (string): The input entered by the user.
-
-        Returns:
-            RAW: a string (the function name) entered by the user.
-        """
-        raw = idx.split()
-        return raw[0]
-    
     def getSettings(self):
-        """Returns the system settings in a dictionary
+        """Returns the current system settings as a dictionary."""
+        return {
+            "Commands": CurrentCommands,
+            "Output Colors": OUTPUT_COLORS,
+            "File Colors": FILE_COLORS
+        }
 
-        Returns:
-            Dict: The system settings
-        """ 
-        sett = {"Commands": CurrentCommands,
-                "Output Colors": OUTPUT_COLORS,
-                "File Colors": FILE_COLORS}
-        return sett
-    
-    def reportError(self, message, code, exit=False):
-        """Creates a nicely formatted error message
-        
+    def reportFatalError(self, error, customErrorMessage=''):
+        """Raises a fatal error that exists the program
+
         Args:
-            message (str): The error message
-            code (str): The error code
-            exit (bool, optional): Wether or not to exit the program. Defaults to True.
-
-        Returns:
-            None (null): I forget what this does
+            error (custom error): The error that was raised
+            customErrorMessage (str, optional): A custom error message. Defaults to ''.
         """
-        print(colored(f"* FATAL INTERNAL ERROR!\n* PLEASE REPORT ISSUE ON GITHUB REPO ({GITHUB})\n* Exit status: <{message}> Compiler: <{code};> ", Error))
-        if exit == True:
-            sys.exit(1)
+        if customErrorMessage:
+            print(colored(
+                f"* FATAL INTERNAL ERROR!\n* Error msg: <{error.message}>\n* Program stated: <{customErrorMessage}>\n* Compiler: <e{error.code}>", Error))
         else:
-            return None
-        
-    @staticmethod
-    def write(*ipt):
-        """Displays a neatly formatted message to the console.
-        
+            print(colored(
+                f"* FATAL INTERNAL ERROR!\n* Please report the issue on GitHub ({GITHUB})\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", Error))
+        sys.exit(error.code)
+
+    def reportStaticError(self, error, customErrorMessage=''):
+        """Raises a static error
+
+        Args:
+            error (custom error): The error that was raised
+            customErrorMessage (str, optional): A custom error message. Defaults to ''.
         """
-        print("*")
-        for i in ipt:
-            print(f"* {i}")
-        print("*")
+        if customErrorMessage:
+            print(colored(
+                f"* Static Error:\n* Error msg: <{error.message}>\n* Program stated: <{customErrorMessage}>\n* Compiler: <e{error.code}>", Error))
+        else:
+            print(colored(
+                f"* Static Error:\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", Error))
+
+    @staticmethod
+    def write(*ipt, color=None):
+        """Prints a neatly formatted message to the console."""
+        if color:
+            print(colored("*", color))
+            for i in ipt:
+                print(colored(f"* {i}", color))
+            print(colored("*", color))
+        else:
+            print("*")
+            for i in ipt:
+                print(f"* {i}")
+            print("*")
 
     def prompt(self, idx):
         if idx == "RootUserError":
-            self.write(colored("WARNING!", Warning), colored("The action you are about to take is reserved for ROOT users. Are you sure you want to continue?", Warning))
+            self.write(colored("WARNING!", Warning), colored(
+                "This action is reserved for ROOT users. Continue?", Warning))
             if input().lower().startswith("y"):
                 return "continue"
-            
+
     def changeUserName(self):
+        """Changes the username of the user."""
         global usrN
-        """Changes the username of the user.
-        
-        """
-        self.write(colored("Are you sure you want to change your username? [y/n]", Warning))
-        ans = input()
+        self.write(
+            colored("Are you sure you want to change your username? [y/n]", Warning))
+        ans = input().lower()
         if ans == "y":
-            
-            usrN = input(colored("Enter your new username: ", "black", f"on_{cPrompt}"))
-            self.write(colored(f"Your username has been changed to {usrN}.", SystemOut))
+            usrN = input(colored("Enter your new username: ",
+                         "black", f"on_{cPrompt}"))
+            self.write(
+                colored(f"Your username has been changed to {usrN}.", SystemOut))
         elif ans == "n":
             self.write(colored("No changes made.", SystemOut))
         else:
             self.write(colored("Invalid input.", Error))
             print(self.didYouMean(ans, ["y", "n"]))
 
-    class typingFunctions():
+    class typingFunctions:
         def typingPrint(self, text, end="\n"):
-            """Create a smooth typing action
-            
-            Args:
-                text (str): The text to be typed
-                end (str, optional): _description_. Defaults to "\n".
-            """
-            text += end  
+            """Creates a smooth typing effect for console output."""
+            text += end
             for character in text:
                 sys.stdout.write(character)
                 sys.stdout.flush()
                 time.sleep(ThrottleSpeed)
-  
+
         def typingInput(self, text):
-            """Creates the same typing action as typingPrint(), but for input
-            
-            Args:
-                text (str): The text to print
-
-            Returns:
-                str: The value inputted by the user
-            """
+            """Creates a smooth typing effect for input prompts."""
             for character in text:
                 sys.stdout.write(character)
                 sys.stdout.flush()
                 time.sleep(ThrottleSpeed)
-            value = input()
-            return value
+            return input()
 
-#Create system class instances
+
+class fileSystem:
+    def init(self):
+        pass
+
+    def fileName(self, filename):
+        """Returns the file name wihout the extension
+
+        Args:
+            filename (str): The full file name
+
+        Returns:
+            str: The file's name
+        """
+        fileParts = filename.split(".")
+        try:
+            return fileParts[0]
+        except IndexError:
+            return ImpliedDirectory
+
+    def fileExtension(self, filename):
+        """Returns the file extension without the name
+
+        Args:
+            filename (str): The full file name
+
+        Returns:
+            str: The file's extension
+        """
+        fileParts = filename.split(".")
+        try:
+            return fileParts[1]
+        except IndexError:
+            return ImpliedDirectory
+
+    def isDir(self, filename):
+        """Checks if a filename is a directory
+
+        Args:
+            filename (str): The file name
+
+        Returns:
+            bool: True if the file is a directory, False otherwise
+        """
+        if self.fileExtension(filename) == ImpliedDirectory:
+            return True
+        else:
+            return False
+
+    def colorize(self, file):
+        """Colors filenames according to their extensions
+
+        Args:
+            file (str): The filename to be colorized
+
+        Returns:
+            str: The colorized filenames
+        """
+        if self.fileExtension(file) == ImpliedDirectory:
+            return colored(file, Direc)
+        else:
+            match self.fileExtension(file):
+                case "txt" | "text" | "md" | "rst" | "log" | "csv" | "xml" | "json" | "html" | "css" | "yaml" | "ini" | "config" | "properties" | "toml" | "conf" | "info" | "markdown" | "asc" | "adoc":
+                    return colored(file, Text)
+
+                case "py" | "js" | "rs" | "java" | "c" | "cpp" | "go" | "rb" | "php" | "swift" | "pl" | "lua" | "sh" | "exe" | "bat" | "cmd" | "ps1" | "h" | "m" | "scala" | "ts" | "asm":
+                    return colored(file, Program)
+
+                case _:
+                    return colored(file, Other)
+
+    def categorize(self, files):
+        """Categorize files into directories and files
+
+        Args:
+            files (list): A list of file names
+
+        Returns:
+            dict: A dictionary with 'directories' and 'files' keys
+        """
+        categorized = {"directories": [], "files": []}
+        for file in files:
+            if self.isDir(file):
+                categorized["directories"].append(file)
+            else:
+                categorized["files"].append(file)
+        return categorized
+
+    def verifyDir(self, dir):
+        """Verifies if a directory exists
+
+        Args:
+            dir (str): The directory path
+
+        Returns:
+            bool: True if the directory exists, False otherwise
+        """
+        if not os.path.isdir(dir):
+            return DirectoryNonexistent
+
+
+# -----------------------------
+# INSTANTIATE SYSTEM FUNCTIONS
+# -----------------------------
 system = necessaryFunctions()
 typing = system.typingFunctions()
+filestm = fileSystem()
 
-#Load everything
-if "--skipBackup" not in sys.argv[0:]:      #Run the system startup commands
-    try:
-        print(f"Loading SYSOS version {vsn}...")
-        for i in tqdm(range (2), desc="Running systen scripts", ascii=True): time.sleep(random.randint(0,2))
-        system.setCommandHelp()
-        system.update_Colors()
+# -----------------------------
+# COMMAND CLASSES
+# Includes the following commands:
+#
+# "con"         List files
+# "move"        Change directory
+# "dir"         Current directory
+# "wipe"        Clear output
+# "bam"         Exit SYSOS
+# "ch"          Change command
+# "make"        Make a file
+# "rmv"         Remove file
+# "rmvdir"      Remove directory
+# "run"         Run an executable
+# "view"        View a file
+# "sysos"       SYSOS command
+# "errtest"     Test error catching
+# -----------------------------
 
-        for i in tqdm(range (100), desc=f"Loading commands for {sys.platform} architectures...", ascii=True): time.sleep(random.uniform(0.01, 0.02))
-        time.sleep(1)
-        Computer = sys.platform
-        if Computer == "win32":
-            OperatingSystem = "Windows"
-            clear = "cls"
-        else:
-            OperatingSystem = "Unix"
-            clear = "clr"
+
+class ListContents:
+    def __init__(self):
+        pass
+
+    def run(self, arg=None, colored=True, returned=False):
+        """Lists or returns the contents of a directory
+
+        Args:
+            colored (bool, optional): Colorize output?. Defaults to True.
+            returned (bool, optional): Return instead of printing?. Defaults to False.
+
+        Returns:
+            list: The list of files, only returned if `returned` is True
+        """
         try:
-            with open("user.sysos", "r+") as f:
-                global usrN
-                temp = json.load(f)
-                usrN = temp["Username"]
+            if arg:
+                contents = os.listdir(Directory + "/" + arg)
+            else:
+                contents = os.listdir(Directory)
+                
+
+            for file in contents[:]:  # Iterating over a copy of the list
+                if file.startswith('.'):
+                    contents.remove(file)
+
+            contents.sort()
+            if returned:
+                return contents
+            else:
+                sorted = filestm.categorize(contents)
+                sorted["directories"].sort()
+                sorted["files"].sort()
+                if colored:
+                    try:
+                        if sorted["directories"]:
+                            print("DIRECTORIES:")
+                            count = 1
+                            for direc in sorted["directories"]:
+                                if count == len(sorted["directories"]):
+                                    break
+                                print("  \u251c\u2500" +
+                                    filestm.colorize(direc) + "/")
+                                count += 1
+
+                            print("  \u2570\u2500" + filestm.colorize(direc) + "/")
+                        else:
+                            print("No directories found.")
+
+                        if sorted["files"]:
+                            count = 1
+                            print("\nFILES:")
+                            for file in sorted["files"]:
+                                if count == len(sorted["files"]):
+                                    break
+                                print("  \u251c\u2500" + filestm.colorize(file))
+                                count += 1
+
+                            print("  \u2570\u2500" + filestm.colorize(file))
+                        else:
+                            print("No files found.")
+                    except Exception:
+                        system.reportStaticError(UnknownError)
+                else:
+                    for file in contents:
+                        print(file)
         except Exception:
-            with open("user.sysos", "w+") as f:
-                usrN = input(colored("Enter your username: ", "black", f"on_{cPrompt}"))        #Save the username to a variable
-                json.dump({"Username": usrN}, f)
-        
+            system.reportStaticError(DirectoryNonexistent)
 
-    except Exception as e:
-        system.reportError(message="Error while loading", code=e)
-else:
-    system.setCommandHelp()
-    system.update_Colors()
 
-#Define Function classes
-class listContents():       #Default: con
-    def colorize(self, input):
-        """Adds colors to the Ls() output, but it may work for other functions
-        
-        Args:
-            input (list): Needs to be the DirContent list of dictionaries.
+class ChangeDirectory:
+    def __init__(self):
+        pass
 
-        Returns:
-            List: Use this to nest in a parameter of a function.
-        """
-        ColorFiles = []
-        index = 0
-        while index < len(input):
-            for key in input[index].keys():
-                CTemp = input[index][key]
-                if CTemp == "Direc":
-                    ColorFiles.append(colored(key, Direc))
-                elif CTemp == SupportedFileExtensions[0] or CTemp == SupportedFileExtensions[1]:
-                    ColorFiles.append(colored(key, Text))
-            index += 1
-        return ColorFiles
-    
-    def run(self, prt=True, colors=False, showExtensions=False):
-        """Saves the contents of the current directory to DirContent
+    def run(self, NewDirectory):
+        """Changes the directory variable
 
         Args:
-            prt (bool, optional): If true, then it will print the contents as well as returning them. Defaults to True.
-
-        Returns:
-            List: Returns the contents of the current directory
+            NewDirectory (str): The directory to be changed to
         """
-        DirContent = []
-        for item in files.keys():
-            if files[item][0] == Directory:
-                TmpDic = {item: files[item][1]}
-                DirContent.append(TmpDic)
-            TmpDic = {}
-        #colorize(DirContent)
-        #write(" ".join(ColorFiles))
-        if prt:
-            if colors:
-                print(f"Text documents:\t {colored(Text.capitalize(), Text)}")
-                print(f"Directories:\t {colored(Direc.capitalize(), Direc)}\n")
-
-            print(" ".join(self.colorize(DirContent)))
-        else:
-            return DirContent 
-con = listContents()
-
-class changeDirectory():    #Default: move
-    def run(self, destination):
         global Directory
-        prompt = system.getArgs(destination)
-        if prompt == []:
-            system.write(colored(f"WARNING! Command \"{CurrentCommands[1]}\" needs a parameter", Warning))
-            type(Directory)
-        elif "".join(prompt) == "up":
-            tmp = Directory.split("/")
-            del tmp[-1]
-            tmp = "/".join(tmp)
-            Directory = tmp
-            print(colored(Directory, Direc))
-        elif "".join(prompt) in [k for d in con.run(False) for k in d.keys()]:
-                Directory += f"/{prompt[0]}"
-                print(colored(Directory, Direc))
-        elif "".join(prompt) not in [k for d in con.run(False) for k in d.keys()]:
-            system.write(colored("No such directory", Error))
-move = changeDirectory()
-
-class CurrentDirectory():   #Default: dir
-    def run():
-        """Prints the current directory to the console
-        """
-        print(colored(Directory, SystemOut))
-dir = CurrentDirectory()
-
-class clearOutput():        #Default: wipe
-    def run(self):
-        """Clears the output of the program
-        """
-        if OperatingSystem == "Windows":
-            os.system("cls")
-        elif OperatingSystem == "Unix":
-            os.system("clear")
-wipe = clearOutput()
-
-class endProgram():         #Default: bam
-    def run(self):
-        # listener.join()
-        # listener.stop()
-        raise SystemExit
-bam = endProgram()
-
-class changer():            #Default: ch
-    def run(self, index):
-        prompt = system.getArgs(index)
-        if prompt == []:
-            system.write(colored(f'WARNING! Command \'{CurrentCommands[5]}\' needs a parameter', Warning))
-
-        if prompt == ['usern']: system.changeUserName()
-        if prompt[0] == 'cmds':
-            if '-super' not in prompt:
-
-                if prompt('RootUserError') == 'continue':
-                    print(colored('LISTING CurrentCommands:', SystemOut))
-
-                    for i in range(0, len(CurrentCommands)):
-                        print(colored(CurrentCommands[i], SystemOut, attrs=['bold']), end=colored(', ', SystemOut, attrs=['bold']))
-                        time.sleep(0.1)
-                    print()
-
-                    editCmd = typing.typingInput(colored('Command to edit: ', cPrompt))
-
-                    if editCmd == '': pass
-
-                    elif editCmd == 'done': flag = 'done'; pass
-
-                    elif editCmd not in CurrentCommands:
-                        system.CommandNotFound(editCmd)
-                        print(system.didYouMean(editCmd))
-
-                    changeCmd = input(colored(f'Change \'{editCmd}\' to: ', cPrompt))
-                    CurrentCommands[CurrentCommands.index(editCmd)] = changeCmd
-                    system.setCommandHelp()
-
-            elif '-super' in prompt:
-                print(colored('LISTING CurrentCommands:', SystemOut))
-
-                for i in range(0, len(CurrentCommands)):
-                    print(colored(CurrentCommands[i], SystemOut, attrs=['bold']), end=colored(', ', SystemOut, attrs=['bold']))
-                print()
-                editCmd = input(colored('Command to edit: ', cPrompt))
-
-                if editCmd == '': pass
-                elif editCmd == 'done': flag = 'done'; pass
-                elif editCmd not in CurrentCommands:
-                    system.CommandNotFound(editCmd)
-                    print(system.didYouMean(editCmd))
-                changeCmd = input(colored(f'Change \'{editCmd}\' to: ', cPrompt))
-                CurrentCommands[CurrentCommands.index(editCmd)] = changeCmd
-                system.setCommandHelp()
-ch = changer()
-
-class makeFile():           #Default: make
-    def run(self, ipt):
-        """Makes a file in the list of files, as well as a text file.
-
-        Args:
-            i (String): The desired file name.
-        """
-        WholeFile = system.getArgs(ipt)[0]
-        Name = WholeFile.split('.')[0]
-        try:
-            ValidExtensions = SupportedFileExtensions
-            Extension = str('.' + WholeFile.split('.')[1])
-            
-            if Extension not in ValidExtensions:
-                system.reportError(f"File does not have a valid extension.>\n* Please choose a valid extension: <{SupportedFileExtensions}", code=f"Invalid file extension: {Extension}")
-                
-            else:
-                # print(WholeFile, ''.join(WholeFile))
-
-                files[Name] = list([Directory, Extension])
-                con.run()
-                with open(''.join(WholeFile), "w") as f:
-                    f.write(f"FILE CREATED AT {time.strftime("%Y-%m-%d %H:%M")}\n")
-
-                with open("files.sysos", "w+") as f:
-                    json.dump(files, f)
-                
-                
-
-        except Exception:
-            files[f"{Name}"] = list([Directory, "Direc"])
-            con.run()
-            with open("files.sysos", "w+") as f:
-                json.dump(files, f)
-make = makeFile()
-
-class removeFile():         #Default: rmv
-    def run(self, file):
-        try:
-            if system.getArgs(file)[0].split('.')[0] in files and f'.{system.getArgs(file)[0].split('.')[1]}' in files[system.getArgs(file)[0].split('.')[0]][1]:
-                del files[system.getArgs(file)[0].split('.')[0]]
-                os.remove(' '.join(system.getArgs(file)))
-                with open("files.sysos", "w+") as f:
-                    json.dump(files, f)
-                con.run()
-            else:
-                system.write(colored(f'No such file or directory: {system.getArgs(file)[0]}', Error))
-
-        except IndexError:
-            system.write(colored(f'WARNING! Command \'{CurrentCommands[7]}\' needs a parameter', Warning))
-rmv = removeFile()
-
-class runCommand():         #Default: run
-    def run(self, command):
-        """Runs the inputted command in the system shell.
-
-        Args:
-            command (str): The raw shell input
-        """
-        if system.getArgs(command) != []:
-                run(' '.join(system.getArgs(command)))
+        if NewDirectory == "up":
+            split = Directory.split("/")
+            del split[len(split)-1]
+            split = "/".join(split)
+            Directory = split
         else:
-            system.write(colored(f'WARNING! Command \'{CurrentCommands[8]}\' needs a parameter', Warning))
-runCmd = runCommand()
+            test = Directory + "/" + NewDirectory
+            print(test)
 
-class ViewFile():           #Default: view
-    def run(self, ipt):
-        fileToView = system.getArgs(ipt)[0]
-        with open(fileToView, 'r') as f:
-            print(f.read())
+            if filestm.verifyDir(test) != DirectoryNonexistent:
+                Directory = test  # FIXME: Doesn't update the Directory variable globally
+            else:
+                system.reportStaticError(
+                    DirectoryNonexistent, f"Attempted to move to <{test}>")
 
-        if fileToView not in files.keys():
-            system.reportError("File does not exits")
+
+class CurrentDirectory:
+    def __init__(self):
+        pass
+
+    def run(self):
+        """Prints current directory from `Directory` variable
+        """
+        print(colored(Directory, Direc))
+
+
+class ClearOutput:
+    def __init__(self):
+        pass
+
+    def run(self, lines):
+        """Clears `lines` of output
+
+        Args:
+            lines (int): The number of lines to clear
+        """
+        system.clearOutputLines(lines)
+
+
+class Exit:
+    def __init__(self):
+        pass
+
+    def run(self):
+        """Exits SYSOS
+        """
+        sys.exit()
+
+
+class Changer:
+    def __init__(self):
+        pass
+
+    def run(self, src, dst, hasRoot=False):
+        global username
+        if src == username:
+            if hasRoot:
+                system.write(
+                    f"SYSTEM OUTPUT\n* Username changed from <{src}> to <{dst}>", color=SystemOut)
+                username = dst
+            else:
+                system.reportStaticError(InsufficientPermission)
+
+        elif src in CurrentCommands:
+            if hasRoot:
+                system.write(
+                    f"SYSTEM OUTPUT\n* Command changed from <{src}> to <{dst}>", color=SystemOut)
+                CurrentCommands[src] = dst
+            else:
+                system.reportStaticError(InsufficientPermission)
+
+        else:
+            try:
+                os.rename(src, dst)
+                system.write(
+                    f"SYSTEM OUTPUT\n* File <{src}> renamed to <{dst}", color=SystemOut)
+            except FileNotFoundError:
+                system.reportStaticError(FileNonexistent)
+            except PermissionError:
+                system.reportStaticError(InsufficientPermission)
+            except Exception as e:
+                system.reportStaticError(UnknownError, e)
+
+
+class CreateFile:
+    def __init__(self):
+        pass
+
+    def run(self, filename):
+        """Creates a new file
+
+        Args:
+            filename (str): The name of the file to be created
+        """
+        filedir = Directory + "/" + filename
+        try:
+            with open(filedir, 'w') as file:
+                pass
+            system.write(
+                f"SYSTEM OUTPUT\n* Created file <{filename}>", color=SystemOut)
+        except Exception as e:
+            system.reportStaticError(UnknownError, e)
+
+
+class DeleteFile:
+    def __init__(self):
+        pass
+
+    def run(self, filename):
+        """Removes a file
+
+        Args:
+            filename (str): The name of the file to be removed
+        """
+        filedir = Directory + "/" + filename
+        try:
+            os.remove(filedir)
+            system.write(
+                f"SYSTEM OUTPUT\n* Deleted file <{filename}>", color=SystemOut)
+        except FileNotFoundError:
+            system.reportStaticError(FileNonexistent)
+        except PermissionError:
+            system.reportStaticError(InsufficientPermission)
+        except Exception as e:
+            system.reportStaticError(UnknownError, e)
+
+
+class DeleteDirectory:
+    def __init__(self):
+        pass
+
+    def run(self, dirname):
+        """Removes a directory and all its contents
+
+        Args:
+            dirname (str): The name of the directory to be removed
+        """
+        filedir = Directory + "/" + dirname
+        try:
+            shutil.rmtree(filedir)
+            system.write(
+                f"SYSTEM OUTPUT\n* Deleted directory <{dirname}>", color=SystemOut)
+        except FileNotFoundError:
+            system.reportStaticError(FileNonexistent)
+        except PermissionError:
+            system.reportStaticError(InsufficientPermission)
+        except Exception as e:
+            system.reportStaticError(UnknownError, e)
+
+
+class RunExecutable:
+    def __init__(self):
+        pass
+
+    def run(self, filename):
+        """Runs an executable file
+
+        Args:
+            filename (str): The name of the executable file to be run
+        """
+        filedir = Directory + "/" + filename
+        extn = filestm.fileExtension(filedir)
+        try:
+            if extn == "py":
+                os.system(f"python3 {filename}")
+            elif extn == "rs":
+                os.system(f"rustc {filename} -o output && ./output")
+            elif extn == "c":
+                os.system(f"gcc {filename} -o output && ./output")
+            elif extn == "cpp":
+                os.system(f"g++ {filename} -o output && ./output")
+            elif extn == "java":
+                os.system(f"javac {filename} && java {filename.split('.')[0]}")
+            elif extn == "js":
+                os.system(f"node {filename}")
+            elif extn == "ts":
+                os.system(f"ts-node {filename}")
+            elif extn == "go":
+                os.system(f"go run {filename}")
+            elif extn == "rb":
+                os.system(f"ruby {filename}")
+            elif extn == "sh":
+                os.system(f"bash {filename}")
+            else:
+                system.reportStaticError(
+                    UnsupportedFile, f"{extn} is not supported")
+
+        except FileNotFoundError:
+            system.reportStaticError(FileNonexistent)
+        except PermissionError:
+            system.reportStaticError(InsufficientPermission)
+        except subprocess.CalledProcessError as e:
+            system.write(
+                f"SYSTEM OUTPUT\n* <{filename}> exited with status {e.returncode}", color=SystemOut)
+        except Exception as e:
+            system.reportStaticError(UnknownError, e)
+
+
+class ViewFile:
+    def __init__(self):
+        pass
+
+    def run(self, filename):
+        """Displays the contents of a file
+
+        Args:
+            filename (str): The name of the file to be displayed
+        """
+        filedir = Directory + "/" + filename
+        try:
+            with open(filedir, 'r') as file:
+                contents = file.read()
+                system.write(
+                    f"SYSTEM OUTPUT\n* Contents of <{filename}>:\n\n{contents}", color=SystemOut)
+        except FileNotFoundError:
+            system.reportStaticError(FileNonexistent)
+        except Exception as e:
+            system.reportStaticError(UnknownError, e)
+
+
+# -----------------------------
+# INSTANTIATE COMMAND CLASSES
+# -----------------------------
+con = ListContents()
+move = ChangeDirectory()
+dir = CurrentDirectory()
+wipe = ClearOutput()
+bam = Exit()
+ch = Changer()
+make = CreateFile()
+rmv = DeleteFile()
+rmvdir = DeleteDirectory()
+runExe = RunExecutable()
 view = ViewFile()
 
-class HistoryManager():
-    
-    def add2history(self, command):
-        History.append(command)
-    
-    def on_press(self, key):
-        try:
-            if key == keyboard.Key.up:                      # Check if the pressed key is the Up Arrow key
-                system.clearOutputLines('a')
-                input(colored(f"{usrN}@SYsos{colored(vsn, 'light_cyan')}", "green") + colored(" $ ", "blue"))
-                typer.typewrite("up")
-            elif key == keyboard.Key.down:                  # Check if the pressed key is the Down Arrow key
-                system.clearOutputLines('a')
-                typer.typewrite("down")
-        except AttributeError:
-            pass  # Handle special keys that don't have a char attribute
-# scrollth = HistoryManager()
+# -----------------------------
+# RUN SETUP SCRIPTS
+# -----------------------------
+system.setCommandHelp()
+system.update_Colors()
+system.updatePrompt()
+# -----------------------------
+# MAIN LOOP
+# -----------------------------
+while running:
+    system.updatePrompt()  # Update the prompt with current directory and username
 
-# listener = keyboard.Listener(on_press=scrollth.on_press)
-# listener.start()
-
-
-try:                        #Attempt to clear shell output
-    if OperatingSystem == "Windows":
-        os.system("cls")
-    elif OperatingSystem == "Unix":
-        os.system("clear")
-except Exception as e:      #If unable, report error
-    system.reportError("Unable to clear shell output.", code=e)
-    system.write(colored(f"Maybe program was run with '{colored("--skipBackup", SystemOut)}{colored("' flag?", Error)}", Error))
-
-try:
-    with open("files.sysos", "r") as f:
-        files = json.load(f)
-except FileNotFoundError:
-    system.write(colored("Could not load files from filesystem backup file.", Error),
-                 colored("Would you like to create a new archive instead? [y/N]", Error))
-    while True:
-        response = input('> ')
-        if response in ['y', 'N']: break
-        else: 
-            typing.typingPrint(colored("Invalid input!", Error)); 
-            time.sleep(1)
-            system.clearOutputLines(2)
-        if response == 'y':
-            sys.exit(1)
-        else:
-            continue
-    if response == 'y':
-        files = {"docs": ["/user/main", "Direc"], "Test": ["/user/main", ".txt"], "user": ["/", "Direc"], "main": ["/user", "Direc"]}  #The internal files cache 
-        with open('files.sysos', "w+") as f:
-            json.dump(files, f)
-    else:
-        system.reportError("SYSOS IS CORRUPTED! PLEASE DO NOT CONTINUE TO USE, YOU MAY DAMAGE YOUR SYSTEM!", code="Backup file not found")
-
-
-while True: 
     try:
-        prompt = colored(f"{usrN}@SYsos{colored(vsn, 'light_cyan')}", "green") + colored(" $ ", "blue")        #Update the prompt to be displayed
-        response = input(prompt)
-
-        if system.getFunction(response) not in CurrentCommands:
-            system.CommandNotFound(response, errID="Invalid command!")
-            print(system.didYouMean(response))
-
-        elif system.getFunction(response) == CurrentCommands[0]:        #Default: Con
+        tmp = input(Prompt)
+        command = system.getFunction(tmp)
+        args = system.getArgs(tmp)
+        if command == CurrentCommands[0]:  # con, List files
             try:
+                con.run(arg=args[0])
+            except Exception as e:
                 con.run()
-            except Exception as e:
-                system.reportError(message="Unable to list contents", code=e)
 
-        elif system.getFunction(response) == CurrentCommands[1]:        #Default: Move
+        elif command == CurrentCommands[1]:  # move, Change directory
             try:
-                move.run(destination=response)
+                move.run(args[0])
+            except IndexError:
+                system.reportStaticError(NonexistentParameter)
             except Exception as e:
-                system.reportError(message="Error during directory transposition", code=e)
+                system.reportStaticError(UnknownError, e)
 
-        elif system.getFunction(response) == CurrentCommands[2]:        #Default: Dir
-            try:
-                dir.run()
-            except Exception as e:
-                system.reportError(message="Directory name not found or invalid", code=e)
-        
-        elif system.getFunction(response) == CurrentCommands[3]:        #Default: Wipe
-            try:
-                wipe.run()
-            except Exception as e:
-                system.reportError(message="Unable to clear program output", code=e)
-        
-        elif system.getFunction(response) == CurrentCommands[4]:        #Default: Bam
-            try:
-                bam.run()
-            except Exception as e:
-                system.reportError(message="Problem with sysos exit. (Sorry 'bout that!)", code=e)
+        elif command == CurrentCommands[2]:  # dir, Print current directory
+            dir.run()
 
-        elif system.getFunction(response) == CurrentCommands[5]:        #Default: Ch
+        elif command == CurrentCommands[3]:  # wipe, Clear output
             try:
-                ch.run(response)
-
+                wipe.run(int(args[0]))
             except Exception as e:
-                system.reportError(message="Error detected during renaming process")
+                wipe.run(0)
 
-        elif system.getFunction(response) == CurrentCommands[6]:        #Default: Make
+        elif command == CurrentCommands[4]:  # bam, Exit SYSOS
+            bam.run()
+
+        elif command == CurrentCommands[5]:  # ch, Change username or command
             try:
-                make.run(response)
+                ch.run(args[0], args[1], args[2] == "root")
             except Exception as e:
-                system.reportError(message="Unable to touch file, (\"Can't touch this.\")", code=e)
+                try:
+                    ch.run(args[0], args[1])
+                except IndexError:
+                    system.reportStaticError(NonexistentParameter)
+                except Exception as e:
+                    system.reportStaticError(UnknownError, e)
 
-        elif system.getFunction(response) == CurrentCommands[7]:        #Default: Rmv
+        elif command == CurrentCommands[6]:  # make, Create a new file
             try:
-                rmv.run(response)
+                make.run(args[0])
+            except IndexError:
+                system.reportStaticError(NonexistentParameter)
             except Exception as e:
-                system.reportError(message="Error detected during file deletion", code=e)
+                system.reportStaticError(UnknownError, e)
 
-        elif system.getFunction(response) == CurrentCommands[8]:        #Default: Run
+        elif command == CurrentCommands[7]:  # rmv, Remove a file
             try:
-                runCmd.run(response)
+                rmv.run(args[0])
+            except IndexError:
+                system.reportStaticError(NonexistentParameter)
             except Exception as e:
-                system.reportError(message="Unable to run desired command in system shell", code=e)
+                system.reportStaticError(UnknownError, e)
 
-        elif system.getFunction(response) == CurrentCommands[9]:        #Default: View
+        # rmvdir, Remove a directory and all its contents
+        elif command == CurrentCommands[8]:
             try:
-                view.run(response)
+                rmvdir.run(args[0])
+            except IndexError:
+                system.reportStaticError(NonexistentParameter)
             except Exception as e:
-                system.reportError(message="Unable to locate file", code=e)
+                system.reportStaticError(UnknownError, e)
 
-    except Exception as e:
-        system.reportError(message="Error during matchmaking", code=e)
-    except KeyboardInterrupt: #CTRL+C Pressed 
-        system.write(colored("CTRL+C pressed, data may be lost in case of improper shutdown!", Error), 
-                     colored(f"The proper way to shutdown is run '{colored(CurrentCommands[4], SystemOut)}{colored("' in the console!", Error)}", Error), 
-                     colored("Are you sure you want to continue? [y/N]", Error))
-        while True:
-            response = input('> ')
-            if response in ['y', 'N']: break
-            else: 
-                typing.typingPrint(colored("Invalid input!", Error)); 
-                time.sleep(1)
-                system.clearOutputLines(2)
-        if response == 'y':
-            sys.exit(1)
+        elif command == CurrentCommands[9]:  # run, Run an executable file
+            try:
+                runExe.run(args[0])
+            except IndexError:
+                system.reportStaticError(NonexistentParameter)
+            except Exception as e:
+                system.reportStaticError(UnknownError, e)
+
+        # view, View the contents of a file
+        elif command == CurrentCommands[10]:
+            try:
+                view.run(args[0])
+            except IndexError:
+                system.reportStaticError(NonexistentParameter)
+            except Exception as e:
+                system.reportStaticError(UnknownError, e)
+
+        # elif command == CurrentCommands[11]:    #help, Display help message
         else:
-            continue
+            system.reportFatalError(UnknownError)
+
+    except KeyboardInterrupt:
+        print()
+        system.reportStaticError(UserInterrupt)
+        system.write(
+            "SYSTEM ADVICE", f"If you want to terminate, please use <{CurrentCommands[4]}>", color=Advice)
