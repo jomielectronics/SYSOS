@@ -29,16 +29,17 @@ username = os.environ.get("LOGNAME") or os.environ.get(
 # Modules and commands
 modules = ["time", "random", "pyautogui", "pynput", "tqdm", "os", "sys",
            "difflib", "json", "termcolor", "dataclasses", "subprocess", "shutil"]
-CurrentCommands = ["con", "move", "dir", "wipe", "bam", "ch",
+CurrentCommands = ["con", "rlc", "dir", "wipe", "bam", "ch",
                    "make", "rmv", "rmvdir", "run", "view", "sysos", "errtest"]
 CmdPreset = "SYSOS Commands"  # Current active command preset
-SysosCommands = ["con", "move", "dir", "wipe", "bam", "ch",
+SysosCommands = ["con", "rlc", "dir", "wipe", "bam", "ch",
                  "make", "rmv", "run", "open", "sysos"]  # Default SYSOS commands
 UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch",
                 "touch", "rm", "run", "open", "sysos"]  # Unix commands
 
 # System settings
-Directory = "/Users/Micah"  # Current directory
+Directory = f"/Users/{username}"  # Current directory
+HOME = Directory
 LsCache = {}  # Cache for directory content (used by "ls" command)
 History = []  # History of executed commands
 running = True
@@ -384,7 +385,7 @@ filestm = fileSystem()
 # Includes the following commands:
 #
 # "con"         List files
-# "move"        Change directory
+# "rlc"        Change directory
 # "dir"         Current directory
 # "wipe"        Clear output
 # "bam"         Exit SYSOS
@@ -415,6 +416,10 @@ class ListContents:
         """
         try:
             if arg:
+                if arg.startswith("/"):
+                    system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+                    return
+
                 contents = os.listdir(Directory + "/" + arg)
             else:
                 contents = os.listdir(Directory)
@@ -479,20 +484,26 @@ class ChangeDirectory:
             NewDirectory (str): The directory to be changed to
         """
         global Directory
+        if NewDirectory.startswith("/"):
+            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            return
+
         if NewDirectory == "up":
             split = Directory.split("/")
             del split[len(split)-1]
             split = "/".join(split)
             Directory = split
+        elif NewDirectory == "home":
+            Directory = HOME
         else:
             test = Directory + "/" + NewDirectory
             print(test)
 
             if filestm.verifyDir(test) != DirectoryNonexistent:
-                Directory = test  # FIXME: Doesn't update the Directory variable globally
+                Directory = test
             else:
                 system.reportStaticError(
-                    DirectoryNonexistent, f"Attempted to move to <{test}>")
+                    DirectoryNonexistent, f"Attempted to relocate to <{test}>")
 
 
 class CurrentDirectory:
@@ -551,6 +562,9 @@ class Changer:
                 system.reportStaticError(InsufficientPermission)
 
         else:
+            if src.startswith("/"):
+                system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+                return
             try:
                 os.rename(src, dst)
                 system.write(
@@ -573,6 +587,10 @@ class CreateFile:
         Args:
             filename (str): The name of the file to be created
         """
+        if filename.startswith("/"):
+            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            return
+
         filedir = Directory + "/" + filename
         try:
             with open(filedir, 'w') as file:
@@ -593,6 +611,10 @@ class DeleteFile:
         Args:
             filename (str): The name of the file to be removed
         """
+        if filename.startswith("/"):
+            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            return
+
         filedir = Directory + "/" + filename
         try:
             os.remove(filedir)
@@ -616,6 +638,10 @@ class DeleteDirectory:
         Args:
             dirname (str): The name of the directory to be removed
         """
+        if dirname.startswith("/"):
+            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            return
+        
         filedir = Directory + "/" + dirname
         try:
             shutil.rmtree(filedir)
@@ -639,29 +665,33 @@ class RunExecutable:
         Args:
             filename (str): The name of the executable file to be run
         """
+        if filename.startswith("/"):
+            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            return
+
         filedir = Directory + "/" + filename
         extn = filestm.fileExtension(filedir)
         try:
             if extn == "py":
-                os.system(f"python3 {filename}")
+                os.system(f"python3 {filedir}")
             elif extn == "rs":
-                os.system(f"rustc {filename} -o output && ./output")
+                os.system(f"rustc {filedir} -o output && ./output")
             elif extn == "c":
-                os.system(f"gcc {filename} -o output && ./output")
+                os.system(f"gcc {filedir} -o output && ./output")
             elif extn == "cpp":
-                os.system(f"g++ {filename} -o output && ./output")
+                os.system(f"g++ {filedir} -o output && ./output")
             elif extn == "java":
-                os.system(f"javac {filename} && java {filename.split('.')[0]}")
+                os.system(f"javac {filedir} && java {filedir.split('.')[0]}")
             elif extn == "js":
-                os.system(f"node {filename}")
+                os.system(f"node {filedir}")
             elif extn == "ts":
-                os.system(f"ts-node {filename}")
+                os.system(f"ts-node {filedir}")
             elif extn == "go":
-                os.system(f"go run {filename}")
+                os.system(f"go run {filedir}")
             elif extn == "rb":
-                os.system(f"ruby {filename}")
+                os.system(f"ruby {filedir}")
             elif extn == "sh":
-                os.system(f"bash {filename}")
+                os.system(f"bash {filedir}")
             else:
                 system.reportStaticError(
                     UnsupportedFile, f"{extn} is not supported")
@@ -687,6 +717,10 @@ class ViewFile:
         Args:
             filename (str): The name of the file to be displayed
         """
+        if filename.startswith("/"):
+            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            return
+
         filedir = Directory + "/" + filename
         try:
             with open(filedir, 'r') as file:
@@ -703,7 +737,7 @@ class ViewFile:
 # INSTANTIATE COMMAND CLASSES
 # -----------------------------
 con = ListContents()
-move = ChangeDirectory()
+rlc = ChangeDirectory()
 dir = CurrentDirectory()
 wipe = ClearOutput()
 bam = Exit()
@@ -725,7 +759,7 @@ system.updatePrompt()
 # -----------------------------
 while running:
     system.updatePrompt()  # Update the prompt with current directory and username
-
+#TODO: Fix problem that arrises when dirname starts with "/"
     try:
         tmp = input(Prompt)
         command = system.getFunction(tmp)
@@ -736,9 +770,9 @@ while running:
             except Exception as e:
                 con.run()
 
-        elif command == CurrentCommands[1]:  # move, Change directory
+        elif command == CurrentCommands[1]:  # rlc, Change directory
             try:
-                move.run(args[0])
+                rlc.run(args[0])
             except IndexError:
                 system.reportStaticError(NonexistentParameter)
             except Exception as e:
@@ -783,8 +817,8 @@ while running:
             except Exception as e:
                 system.reportStaticError(UnknownError, e)
 
-        # rmvdir, Remove a directory and all its contents
-        elif command == CurrentCommands[8]:
+        
+        elif command == CurrentCommands[8]:  # rmvdir, Remove a directory and all its contents
             try:
                 rmvdir.run(args[0])
             except IndexError:
