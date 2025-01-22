@@ -4,14 +4,10 @@
 
 ### MAC / LINUX
 In Mac or linux, run `bash Dependencies.sh`
-### WINDOWS
-In Windows, double click `Dependencies.bat`
 
 ## Usage
-In your default CLI of choice, run `bash init.sh` in the `sysos/Unix` directory. In windows, double click `init.bat` in `sysos/Windows`.
+In your default CLI of choice, run `bash init.sh` in the `sysos/Unix` directory. Or, just run the following command: `python3 sysos.py`
 
 ## About
-The `sysos (experimental).py` contains new features that ***may not be stable, or fully worked out. Please don't expect it to work out of the box!*** If you do encounter any   
+SYSOS contains new features that ***may not be stable, or fully worked out. Please don't expect it to work out of the box!*** If you do encounter any   
 issues, do not hesitate to make a bug report.
-
-`sysos-ClassVersion` is a new version of `sysos` that is more compatible and efficient (in most cases). It is not in any way completed yet. Please see the don't expect to much with it.*

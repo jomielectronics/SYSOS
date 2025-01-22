@@ -1,3 +1,4 @@
-pip3 install termcolor
-pip3 install tqdm
-pip3 install pyautogui
+#!/bin/bash
+
+# Install non-default Python packages
+pip3 install pyautogui pynput tqdm termcolor
