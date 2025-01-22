@@ -15,6 +15,8 @@ import json
 from termcolor import *
 import subprocess
 import shutil
+import curses
+from nano_py import NanoPy
 # -----------------------------
 # DEFINE VARIABLES
 # -----------------------------
@@ -732,7 +734,9 @@ class ViewFile:
         except Exception as e:
             system.reportStaticError(UnknownError, e)
 
-
+def runEditor(stdscr, filename):
+    editor = NanoPy(stdscr, filename=filename)
+    editor.run()
 # -----------------------------
 # INSTANTIATE COMMAND CLASSES
 # -----------------------------
@@ -842,6 +846,10 @@ while running:
                 system.reportStaticError(NonexistentParameter)
             except Exception as e:
                 system.reportStaticError(UnknownError, e)
+
+        elif command == "edit":
+            filetoopen = args[0]
+            curses.wrapper(lambda stdscr: runEditor(stdscr, filename=filetoopen))
 
         # elif command == CurrentCommands[11]:    #help, Display help message
         else:
