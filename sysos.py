@@ -32,10 +32,10 @@ username = os.environ.get("LOGNAME") or os.environ.get(
 modules = ["time", "random", "pyautogui", "pynput", "tqdm", "os", "sys",
            "difflib", "json", "termcolor", "dataclasses", "subprocess", "shutil"]
 CurrentCommands = ["con", "rlc", "dir", "wipe", "bam", "ch",
-                   "make", "rmv", "rmvdir", "run", "view", "sysos", "errtest"]
+                   "make", "rmv", "rmvdir", "run", "view", "edit", "sysos", "errtest"]
 CmdPreset = "SYSOS Commands"  # Current active command preset
 SysosCommands = ["con", "rlc", "dir", "wipe", "bam", "ch",
-                 "make", "rmv", "run", "open", "sysos"]  # Default SYSOS commands
+                   "make", "rmv", "rmvdir", "run", "view", "edit", "sysos", "errtest"]  # Default SYSOS commands
 UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch",
                 "touch", "rm", "run", "open", "sysos"]  # Unix commands
 
@@ -487,7 +487,7 @@ class ChangeDirectory:
         """
         global Directory
         if NewDirectory.startswith("/"):
-            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            system.reportStaticError(DirectoryNonexistent, "Directories are not to be prefixed with \"/\" caracter")
             return
 
         if NewDirectory == "up":
@@ -735,7 +735,7 @@ class ViewFile:
             system.reportStaticError(UnknownError, e)
 
 def runEditor(stdscr, filename):
-    editor = NanoPy(stdscr, filename=filename)
+    editor = NanoPy(stdscr, current_dir=Directory, filename=filename)
     editor.run()
 # -----------------------------
 # INSTANTIATE COMMAND CLASSES
@@ -847,9 +847,12 @@ while running:
             except Exception as e:
                 system.reportStaticError(UnknownError, e)
 
-        elif command == "edit":
+        elif command == CurrentCommands[11]:
             filetoopen = args[0]
-            curses.wrapper(lambda stdscr: runEditor(stdscr, filename=filetoopen))
+            try:
+                curses.wrapper(lambda stdscr: runEditor(stdscr, filename=filetoopen))
+            except Exception as e:
+                system.reportStaticError(UnknownError, {e})
 
         # elif command == CurrentCommands[11]:    #help, Display help message
         else:

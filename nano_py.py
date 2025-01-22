@@ -3,19 +3,24 @@ import time
 
 
 class NanoPy:
-    def __init__(self, stdscr, filename="sysos.py"):
+    def __init__(self, stdscr,current_dir,filename="sysos.py"):
         self.stdscr = stdscr
         self.cursor_x = 0
         self.cursor_y = 0
         self.scroll_offset = 0  # Offset for scrolling
         self.content = []
         self.running = True
+        self.current_dir = current_dir
         self.filename = filename
         self.status_message = f"CTRL+S: Save | CTRL+Q: Quit | Status: unsaved | Name: {self.filename}" if self.filename else "CTRL+S: Save | CTRL+Q: Quit | Status: unsaved | Name: unnamed"
 
         if self.filename:
-            with open(self.filename, 'r') as f:
+            filedir = self.current_dir + "/" + self.filename
+            with open(filedir, 'r') as f:
                 self.content = f.readlines()
+
+        if not self.content:
+            self.content = [""]
 
         curses.start_color()
         curses.init_pair(1, curses.COLOR_WHITE, curses.COLOR_BLUE)
@@ -91,7 +96,7 @@ class NanoPy:
                 if self.cursor_y < self.scroll_offset:
                     self.scroll_offset -= 1
         elif key == 19:  # CTRL+S to save
-            self.save_file()
+            self.save_file(self.current_dir)
         elif key == 17:  # CTRL+Q to quit
             self.running = False
         elif key == 14:  # CTRL+N to set filename
@@ -104,17 +109,20 @@ class NanoPy:
             self.status_message = f"Filename set to {self.filename}"
         else:
             char = chr(key)
+            # if self.cursor_y >= len(self.content):
+            #     self.content.append("")  # Add a new empty line if needed
             current_line = self.content[self.cursor_y]
             self.content[self.cursor_y] = current_line[:self.cursor_x] + \
                 char + current_line[self.cursor_x:]
             self.cursor_x += 1
 
-    def save_file(self):
+    def save_file(self, dir):
         if not self.filename:
             self.status_message = "Filename not set. Use 'Ctrl+N' to set a name."
             return
         try:
-            with open(self.filename, "w") as file:
+            filedir = dir + "/" + self.filename
+            with open(filedir, "w") as file:
                 file.write("\n".join(self.content))
             self.status_message = f"File saved to {self.filename}"
             time.sleep(1)
