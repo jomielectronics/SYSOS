@@ -122,6 +122,9 @@ NonexistentParameter = CustomError(
 
 
 class necessaryFunctions:
+    def disableCommandFlow(self):
+        os.system("stty -ixon")
+
     def updatePrompt(self):
         global Prompt
         Prompt = colored(f"{username}", "light_green") + "@" + colored(f"SYSOS",
@@ -758,6 +761,7 @@ view = ViewFile()
 system.setCommandHelp()
 system.update_Colors()
 system.updatePrompt()
+system.disableCommandFlow()
 # -----------------------------
 # MAIN LOOP
 # -----------------------------
