@@ -390,7 +390,7 @@ filestm = fileSystem()
 # Includes the following commands:
 #
 # "con"         List files
-# "rlc"        Change directory
+# "rlc"         Change directory
 # "dir"         Current directory
 # "wipe"        Clear output
 # "bam"         Exit SYSOS
@@ -400,6 +400,7 @@ filestm = fileSystem()
 # "rmvdir"      Remove directory
 # "run"         Run an executable
 # "view"        View a file
+# "edit"        Edit a file
 # "sysos"       SYSOS command
 # "errtest"     Test error catching
 # -----------------------------
