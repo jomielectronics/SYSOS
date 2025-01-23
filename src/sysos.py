@@ -1,4 +1,12 @@
 # -----------------------------
+# NAMING SCHEME
+# -----------------------------
+# CustomClass           UpperCamelCase
+# ClassInstance         UpperCamelCase
+# custom_variable       lower_snake_case
+# CONSTANT_VARIABLE     CONSTANT_CASE
+
+# -----------------------------
 # IMPORT NECESSARY MODULES
 # -----------------------------
 import time
