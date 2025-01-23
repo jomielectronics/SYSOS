@@ -12,12 +12,13 @@ class NanoPy:
         self.running = True
         self.current_dir = current_dir
         self.filename = filename
-        self.status_message = f"CTRL+S: Save | CTRL+Q: Quit | Status: unsaved | Name: {self.filename}" if self.filename else "CTRL+S: Save | CTRL+Q: Quit | Status: unsaved | Name: unnamed"
+        self.status_message = f"CTRL+S: Save | CTRL+Q: Quit | Status: unsaved | Name: {self.filename} (CTRL+N to rename)" if self.filename else "CTRL+S: Save | CTRL+Q: Quit | Status: unsaved | Name: unnamed"
 
         if self.filename:
             filedir = self.current_dir + "/" + self.filename
             with open(filedir, 'r') as f:
-                self.content = f.readlines()
+                for line in f.readlines():
+                    self.content.append(line.strip())
 
         if not self.content:
             self.content = [""]

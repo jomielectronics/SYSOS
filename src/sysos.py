@@ -716,6 +716,8 @@ class RunExecutable:
                 os.system(f"ruby {filedir}")
             elif extn == "sh":
                 os.system(f"bash {filedir}")
+            elif extn == "gleam":
+                os.system(f"gleam run {filename}")
             else:
                 system.reportStaticError(
                     UnsupportedFile, f"{extn} is not supported")
@@ -790,11 +792,13 @@ while running:
 #TODO: Fix problem that arrises when dirname starts with "/"
     try:
         tmp = input(Prompt)
+        if tmp == CurrentCommands[12]:
+            tmp = autorun
+
         command = system.getFunction(tmp)
         args = system.getArgs(tmp)
 
-        if command == CurrentCommands[12]:
-            command = autorun
+        
 
         if command == CurrentCommands[0]:  # con, List files
             try:
@@ -890,9 +894,10 @@ while running:
                 system.write(fixed)
             else:
                 system.write(f"{system.didYouMean(command)}", "If you want to automatically execute this,", "type \"aexe\"", color=Advice)
-
-                autorun = system.didYouMean(command, returnFix=True)[0]
-                print(autorun)
+                if args != []:
+                    autorun = system.didYouMean(command, returnFix=True)[0] + " " + " ".join(args)
+                else:
+                    autorun = system.didYouMean(command, returnFix=True)[0]
                 
 
     except KeyboardInterrupt:
