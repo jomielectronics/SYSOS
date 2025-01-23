@@ -40,8 +40,8 @@ UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch",
                 "touch", "rm", "run", "open", "sysos"]  # Unix commands
 
 # System settings
-Directory = f"/Users/{username}"  # Current directory
-HOME = Directory
+HOME = os.environ.get("HOME")
+Directory = HOME  # Current directory
 LsCache = {}  # Cache for directory content (used by "ls" command)
 History = []  # History of executed commands
 running = True
