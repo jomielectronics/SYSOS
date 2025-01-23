@@ -21,29 +21,61 @@ from nano_py import NanoPy
 # DEFINE VARIABLES
 # -----------------------------
 vsn = "0.3.1"  # The SYSOS version
-ThrottleSpeed = 0  # Speed for processing operations
-cfgvsn = 1.0  # Configuration tool version
+throttle_speed = 0  # Speed for processing operations
+config_version = 1.0  # Configuration tool version
 GITHUB = "https://github.com/jomielec/SYSOS/issues"  # GitHub repository link
-FirstTimeRunning = True  # Is this the first run of the program?
+first_time_running = True  # Is this the first run of the program?
 username = os.environ.get("LOGNAME") or os.environ.get(
     "USER") or os.environ.get("USERNAME")
 
 # Modules and commands
 modules = ["time", "random", "pyautogui", "pynput", "tqdm", "os", "sys",
            "difflib", "json", "termcolor", "dataclasses", "subprocess", "shutil"]
-CurrentCommands = ["con", "rlc", "dir", "wipe", "bam", "ch",
+
+current_commands = ["con", "rlc", "dir", "wipe", "bam", "ch",
                    "make", "rmv", "rmvdir", "run", "view", "edit", "aexe", "sysos", "errtest"]
-CmdPreset = "SYSOS Commands"  # Current active command preset
-SysosCommands = ["con", "rlc", "dir", "wipe", "bam", "ch",
-                   "make", "rmv", "rmvdir", "run", "view", "edit", "aexe", "sysos", "errtest"]  # Default SYSOS commands
-UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch",
-                "touch", "rm", "run", "open", "sysos"]  # Unix commands
+active_preset = "SYSOS Commands"  # Current active command preset
+
+sysos_commands = [
+    "con",       # List files
+    "rlc",       # Change directory
+    "dir",       # Current directory
+    "wipe",      # Clear output
+    "bam",       # Exit SYSOS
+    "ch",        # Change command
+    "make",      # Make a file
+    "rmv",       # Remove file
+    "rmvdir",    # Remove directory
+    "run",       # Run an executable
+    "view",      # View a file
+    "edit",      # Edit a file
+    "aexe",      # Run the autosuggested command
+    "sysos",     # SYSOS command
+    "errtest"    # Test error catching
+]
+
+unix_commands = [
+    "ls",         # List files (equivalent to "con")
+    "cd",         # Change directory (equivalent to "rlc")
+    "pwd",        # Current directory (equivalent to "dir")
+    "clear",      # Clear output (equivalent to "wipe")
+    "exit",       # Exit shell (equivalent to "bam")
+    "alias",      # Change command (equivalent to "ch")
+    "touch",      # Make a file (equivalent to "make")
+    "rm",         # Remove file (equivalent to "rmv")
+    "rmdir",      # Remove directory (equivalent to "rmvdir")
+    "./<file>",   # Run an executable (equivalent to "run")
+    "cat",        # View a file (equivalent to "view")
+    "nano",       # Edit a file (equivalent to "edit")
+    "!!",         # Run the last command (equivalent to "aexe")
+    "uname -a",   # System command (equivalent to "sysos")
+    "false"       # Generate an error (equivalent to "errtest")
+]
 
 # System settings
 HOME = os.environ.get("HOME")
-Directory = HOME  # Current directory
-LsCache = {}  # Cache for directory content (used by "ls" command)
-History = []  # History of executed commands
+directory = HOME  # Current directory
+history = []  # History of executed commands
 running = True
 
 # Output and file colors
@@ -62,7 +94,7 @@ FILE_COLORS = {
     "Other": "yellow"
 }
 
-error_codes = {
+ERROR_CODES = {
     "SUCCESS": 0,                     # The program executed successfully without errors.
     "GEN_ERR": 1,                     # General Error (catch-all for unspecified errors).
     "BAD_BUILTIN": 2,                 # Misuse of Shell Built-ins (incorrect usage of shell commands).
@@ -101,22 +133,24 @@ class CustomError:
 
 
 ImpliedDirectory = CustomError(
-    "This error is for internal use only.", error_codes["SUCCESS"])
+    "This error is for internal use only.", ERROR_CODES["SUCCESS"])
 DirectoryNonexistent = CustomError(
-    "Directory doesn't exist.", error_codes["DIR_NOT_FOUND"])
+    "Directory doesn't exist.", ERROR_CODES["DIR_NOT_FOUND"])
 InsufficientPermission = CustomError(
-    "Lack of permissions", error_codes["PERM_DENIED"])
+    "Lack of permissions", ERROR_CODES["PERM_DENIED"])
 FileNonexistent = CustomError(
-    "File doesn't exist", error_codes["FILE_NOT_FOUND"])
-UnknownError = CustomError("An unknown error occurred", error_codes["GEN_ERR"])
+    "File doesn't exist", ERROR_CODES["FILE_NOT_FOUND"])
+UnknownError = CustomError("An unknown error occurred", ERROR_CODES["GEN_ERR"])
 UnsupportedFile = CustomError(
-    "This file type is not supported", error_codes["INV_ARG"])
+    "This file type is not supported", ERROR_CODES["INV_ARG"])
 UserInterrupt = CustomError(
-    "Program interrupted by user", error_codes["CTRL_C_TERM"])
+    "Program interrupted by user", ERROR_CODES["CTRL_C_TERM"])
 NonexistentParameter = CustomError(
-    "A parameter was needed, but not found.", error_codes["BAD_BUILTIN"])
+    "A parameter was needed, but not found.", ERROR_CODES["BAD_BUILTIN"])
 InvalidCommand = CustomError(
-    "Command not recognized", error_codes["CMD_NOT_FOUND"])
+    "Command not recognized", ERROR_CODES["CMD_NOT_FOUND"])
+CacheEmpty = CustomError(
+    "Cache is empty", ERROR_CODES["SEG_FAULT"])
 
 
 # -----------------------------
@@ -124,33 +158,33 @@ InvalidCommand = CustomError(
 # -----------------------------
 
 
-class necessaryFunctions:
-    def disableCommandFlow(self):
+class NecessaryFunctions:
+    def disable_command_flow(self):
         os.system("stty -ixon")
 
-    def updatePrompt(self):
+    def update_prompt(self):
         global Prompt
         Prompt = colored(f"{username}", "light_green") + "@" + colored(f"SYSOS",
-                                                                       "dark_grey") + " \u276f " + colored(Directory, Direc) + " \u276f " + "$ "
+                                                                       "dark_grey") + " \u276f " + colored(directory, DIREC) + " \u276f " + "$ "
 
-    def setCommandHelp(self):
+    def set_command_help(self):
         """Creates a dictionary of command names and their descriptions."""
-        global CMDHelp
-        CMDHelp = {
-            CurrentCommands[0]: "Lists the contents of the current directory",
-            CurrentCommands[1]: "Changes the current directory",
-            CurrentCommands[2]: "Lists the current directory",
-            CurrentCommands[3]: "Clears the system output",
-            CurrentCommands[4]: "Returns to your default terminal",
-            CurrentCommands[5]: "A generic command for renaming, editing commands, or changing username",
-            CurrentCommands[6]: "Creates files and folders",
-            CurrentCommands[7]: "Deletes files or folders",
-            CurrentCommands[8]: "Executes commands in the default terminal",
-            CurrentCommands[9]: "Displays the contents of a file",
-            CurrentCommands[11]: "Runs error-catching subroutines to ensure functionality"
+        global command_help
+        command_help = {
+            current_commands[0]: "Lists the contents of the current directory",
+            current_commands[1]: "Changes the current directory",
+            current_commands[2]: "Lists the current directory",
+            current_commands[3]: "Clears the system output",
+            current_commands[4]: "Returns to your default terminal",
+            current_commands[5]: "A generic command for renaming, editing commands, or changing username",
+            current_commands[6]: "Creates files and folders",
+            current_commands[7]: "Deletes files or folders",
+            current_commands[8]: "Executes commands in the default terminal",
+            current_commands[9]: "Displays the contents of a file",
+            current_commands[11]: "Runs error-catching subroutines to ensure functionality"
         }
 
-    def clearOutputLines(self, lines=0):
+    def clear_output_lines(self, lines=0):
         """Clears console output. Clears all lines if `lines` is 0."""
         if lines == 0:
             os.system("clear")
@@ -158,22 +192,22 @@ class necessaryFunctions:
             for _ in range(lines):
                 print("\033[A\033[2K", end="")
 
-    def update_Colors(self):
+    def update_colors(self):
         """Updates global variables with current output and file colors."""
-        global Error, Warning, SystemOut, Advice, Other, cPrompt, Direc, Text, Program, Other
-        Error = OUTPUT_COLORS["Error"]
-        Warning = OUTPUT_COLORS["Warning"]
-        SystemOut = OUTPUT_COLORS["SystemOut"]
-        Advice = OUTPUT_COLORS["Advice"]
-        Other = OUTPUT_COLORS["Other"]
-        cPrompt = OUTPUT_COLORS["cPrompt"]
+        global ERROR, WARNING, SYSTEM_OUT, ADVICE, OTHER, C_PROMPT, DIREC, TEXT, PROGRAM, OTHER
+        ERROR = OUTPUT_COLORS["Error"]
+        WARNING = OUTPUT_COLORS["Warning"]
+        SYSTEM_OUT = OUTPUT_COLORS["SystemOut"]
+        ADVICE = OUTPUT_COLORS["Advice"]
+        OTHER = OUTPUT_COLORS["Other"]
+        C_PROMPT = OUTPUT_COLORS["cPrompt"]
         # File Colors:
-        Direc = FILE_COLORS["Direc"]
-        Text = FILE_COLORS["Text"]
-        Program = FILE_COLORS["Program"]
-        Other = FILE_COLORS["Other"]
+        DIREC = FILE_COLORS["Direc"]
+        TEXT = FILE_COLORS["Text"]
+        PROGRAM = FILE_COLORS["Program"]
+        OTHER = FILE_COLORS["Other"]
 
-    def didYouMean(self, item, matches=CurrentCommands, returnFix=False):
+    def did_you_mean(self, item, matches=current_commands, return_fix=False):
         """Get closes command to the one entered
 
         Args:
@@ -184,7 +218,7 @@ class necessaryFunctions:
             str: A simple message describing that it couldn't find that
         """
         fix = difflib.get_close_matches(item, matches)
-        if returnFix:
+        if return_fix:
             if fix:
                 return fix
             else:
@@ -195,50 +229,50 @@ class necessaryFunctions:
             return "No fixes available."
 
 
-    def getArgs(self, idx):
+    def get_args(self, idx):
         """Extracts arguments from a user input string."""
         return idx.split(" ")[1:]
 
-    def getFunction(self, idx):
+    def get_function(self, idx):
         """Extracts the command (function) from a user input string."""
         return idx.split()[0]
 
-    def getSettings(self):
+    def get_settings(self):
         """Returns the current system settings as a dictionary."""
         return {
-            "Commands": CurrentCommands,
+            "Commands": current_commands,
             "Output Colors": OUTPUT_COLORS,
             "File Colors": FILE_COLORS
         }
 
-    def reportFatalError(self, error, customErrorMessage=''):
+    def report_fatal_error(self, error, custom_error_message=''):
         """Raises a fatal error that exists the program
 
         Args:
             error (custom error): The error that was raised
             customErrorMessage (str, optional): A custom error message. Defaults to ''.
         """
-        if customErrorMessage:
+        if custom_error_message:
             print(colored(
-                f"* FATAL INTERNAL ERROR!\n* Error msg: <{error.message}>\n* Program stated: <{customErrorMessage}>\n* Compiler: <e{error.code}>", Error))
+                f"* FATAL INTERNAL ERROR!\n* Error msg: <{error.message}>\n* Program stated: <{custom_error_message}>\n* Compiler: <e{error.code}>", ERROR))
         else:
             print(colored(
-                f"* FATAL INTERNAL ERROR!\n* Please report the issue on GitHub ({GITHUB})\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", Error))
+                f"* FATAL INTERNAL ERROR!\n* Please report the issue on GitHub ({GITHUB})\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", ERROR))
         sys.exit(error.code)
 
-    def reportStaticError(self, error, customErrorMessage=''):
+    def report_static_error(self, error, custom_error_message=''):
         """Raises a static error
 
         Args:
             error (custom error): The error that was raised
             customErrorMessage (str, optional): A custom error message. Defaults to ''.
         """
-        if customErrorMessage:
+        if custom_error_message:
             print(colored(
-                f"* Static Error:\n* Error msg: <{error.message}>\n* Program stated: <{customErrorMessage}>\n* Compiler: <e{error.code}>", Error))
+                f"* Static Error:\n* Error msg: <{error.message}>\n* Program stated: <{custom_error_message}>\n* Compiler: <e{error.code}>", ERROR))
         else:
             print(colored(
-                f"* Static Error:\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", Error))
+                f"* Static Error:\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", ERROR))
 
     @staticmethod
     def write(*ipt, color=None):
@@ -256,47 +290,47 @@ class necessaryFunctions:
 
     def prompt(self, idx):
         if idx == "RootUserError":
-            self.write(colored("WARNING!", Warning), colored(
-                "This action is reserved for ROOT users. Continue?", Warning))
+            self.write(colored("WARNING!", WARNING), colored(
+                "This action is reserved for ROOT users. Continue?", WARNING))
             if input().lower().startswith("y"):
                 return "continue"
 
-    def changeUserName(self):
+    def change_user_name(self):
         """Changes the username of the user."""
         global usrN
         self.write(
-            colored("Are you sure you want to change your username? [y/n]", Warning))
+            colored("Are you sure you want to change your username? [y/n]", WARNING))
         ans = input().lower()
         if ans == "y":
             usrN = input(colored("Enter your new username: ",
-                         "black", f"on_{cPrompt}"))
+                         "black", f"on_{C_PROMPT}"))
             self.write(
-                colored(f"Your username has been changed to {usrN}.", SystemOut))
+                colored(f"Your username has been changed to {usrN}.", SYSTEM_OUT))
         elif ans == "n":
-            self.write(colored("No changes made.", SystemOut))
+            self.write(colored("No changes made.", SYSTEM_OUT))
         else:
-            self.write(colored("Invalid input.", Error))
-            print(self.didYouMean(ans, ["y", "n"]))
+            self.write(colored("Invalid input.", ERROR))
+            print(self.did_you_mean(ans, ["y", "n"]))
 
-    class typingFunctions:
-        def typingPrint(self, text, end="\n"):
+    class TypingFunctions:
+        def typing_print(self, text, end="\n"):
             """Creates a smooth typing effect for console output."""
             text += end
             for character in text:
                 sys.stdout.write(character)
                 sys.stdout.flush()
-                time.sleep(ThrottleSpeed)
+                time.sleep(throttle_speed)
 
-        def typingInput(self, text):
+        def typing_input(self, text):
             """Creates a smooth typing effect for input prompts."""
             for character in text:
                 sys.stdout.write(character)
                 sys.stdout.flush()
-                time.sleep(ThrottleSpeed)
+                time.sleep(throttle_speed)
             return input()
 
 
-class fileSystem:
+class FileSystem:
     def init(self):
         pass
 
@@ -354,17 +388,17 @@ class fileSystem:
             str: The colorized filenames
         """
         if self.fileExtension(file) == ImpliedDirectory:
-            return colored(file, Direc)
+            return colored(file, DIREC)
         else:
             match self.fileExtension(file):
                 case "txt" | "text" | "md" | "rst" | "log" | "csv" | "xml" | "json" | "html" | "css" | "yaml" | "ini" | "config" | "properties" | "toml" | "conf" | "info" | "markdown" | "asc" | "adoc":
-                    return colored(file, Text)
+                    return colored(file, TEXT)
 
                 case "py" | "js" | "rs" | "java" | "c" | "cpp" | "go" | "rb" | "php" | "swift" | "pl" | "lua" | "sh" | "exe" | "bat" | "cmd" | "ps1" | "h" | "m" | "scala" | "ts" | "asm":
-                    return colored(file, Program)
+                    return colored(file, PROGRAM)
 
                 case _:
-                    return colored(file, Other)
+                    return colored(file, OTHER)
 
     def categorize(self, files):
         """Categorize files into directories and files
@@ -399,10 +433,11 @@ class fileSystem:
 # -----------------------------
 # INSTANTIATE SYSTEM FUNCTIONS
 # -----------------------------
-system = necessaryFunctions()
-typing = system.typingFunctions()
-filestm = fileSystem()
-typing = system.typingFunctions()
+system = NecessaryFunctions()
+typing = system.TypingFunctions()
+filestm = FileSystem()
+typing = system.TypingFunctions()
+
 # -----------------------------
 # COMMAND CLASSES
 # Includes the following commands:
@@ -419,10 +454,10 @@ typing = system.typingFunctions()
 # "run"         Run an executable
 # "view"        View a file
 # "edit"        Edit a file
+# "aexe"        Run the auto-suggested command
 # "sysos"       SYSOS command
 # "errtest"     Test error catching
 # -----------------------------
-
 
 class ListContents:
     def __init__(self):
@@ -441,12 +476,12 @@ class ListContents:
         try:
             if arg:
                 if arg.startswith("/"):
-                    system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+                    system.report_static_error(DirectoryNonexistent, "Directories are not to be specified with \"/\" character")
                     return
 
-                contents = os.listdir(Directory + "/" + arg)
+                contents = os.listdir(directory + "/" + arg)
             else:
-                contents = os.listdir(Directory)
+                contents = os.listdir(directory)
                 
 
             for file in contents[:]:  # Iterating over a copy of the list
@@ -489,44 +524,46 @@ class ListContents:
                         else:
                             print("No files found.")
                     except Exception:
-                        system.reportStaticError(UnknownError)
+                        system.report_static_error(UnknownError)
                 else:
                     for file in contents:
                         print(file)
         except Exception:
-            system.reportStaticError(DirectoryNonexistent)
+            system.report_static_error(DirectoryNonexistent)
 
 
 class ChangeDirectory:
     def __init__(self):
         pass
 
-    def run(self, NewDirectory):
+    def run(self, new_directory):
         """Changes the directory variable
 
         Args:
             NewDirectory (str): The directory to be changed to
         """
-        global Directory
-        if NewDirectory.startswith("/"):
-            system.reportStaticError(DirectoryNonexistent, "Directories are not to be prefixed with \"/\" caracter")
+        global directory
+        if new_directory.startswith("/"):
+            system.report_static_error(DirectoryNonexistent, "Directories are not to be prefixed with \"/\" character")
             return
+        if new_directory.endswith("/"):
+            new_directory = new_directory[:-1]
 
-        if NewDirectory == "up":
-            split = Directory.split("/")
+        if new_directory == "up":
+            split = directory.split("/")
             del split[len(split)-1]
             split = "/".join(split)
-            Directory = split
-        elif NewDirectory == "home":
-            Directory = HOME
+            directory = split
+        elif new_directory == "home":
+            directory = HOME
         else:
-            test = Directory + "/" + NewDirectory
+            test = directory + "/" + new_directory
             print(test)
 
             if filestm.verifyDir(test) != DirectoryNonexistent:
-                Directory = test
+                directory = test
             else:
-                system.reportStaticError(
+                system.report_static_error(
                     DirectoryNonexistent, f"Attempted to relocate to <{test}>")
 
 
@@ -537,7 +574,7 @@ class CurrentDirectory:
     def run(self):
         """Prints current directory from `Directory` variable
         """
-        print(colored(Directory, Direc))
+        print(colored(directory, DIREC))
 
 
 class ClearOutput:
@@ -550,7 +587,7 @@ class ClearOutput:
         Args:
             lines (int): The number of lines to clear
         """
-        system.clearOutputLines(lines)
+        system.clear_output_lines(lines)
 
 
 class Exit:
@@ -572,33 +609,35 @@ class Changer:
         if src == username:
             if hasRoot:
                 system.write(
-                    f"SYSTEM OUTPUT\n* Username changed from <{src}> to <{dst}>", color=SystemOut)
+                    f"SYSTEM OUTPUT\n* Username changed from <{src}> to <{dst}>", color=SYSTEM_OUT)
                 username = dst
             else:
-                system.reportStaticError(InsufficientPermission)
+                system.report_static_error(InsufficientPermission)
 
-        elif src in CurrentCommands:
+        elif src in current_commands:
             if hasRoot:
                 system.write(
-                    f"SYSTEM OUTPUT\n* Command changed from <{src}> to <{dst}>", color=SystemOut)
-                CurrentCommands[src] = dst
+                    f"SYSTEM OUTPUT\n* Command changed from <{src}> to <{dst}>", color=SYSTEM_OUT)
+                current_commands[src] = dst
             else:
-                system.reportStaticError(InsufficientPermission)
+                system.report_static_error(InsufficientPermission)
 
         else:
             if src.startswith("/"):
-                system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+                system.report_static_error(DirectoryNonexistent, "Directories are not to be specified with \"/\" character")
                 return
             try:
-                os.rename(src, dst)
+                src_dir = directory + "/" + src
+                dst_dir = directory + "/" + dst
+                os.rename(src_dir, dst_dir)
                 system.write(
-                    f"SYSTEM OUTPUT\n* File <{src}> renamed to <{dst}", color=SystemOut)
+                        f"SYSTEM OUTPUT\n* File <{src}> renamed to <{dst}>", color=SYSTEM_OUT)
             except FileNotFoundError:
-                system.reportStaticError(FileNonexistent)
+                system.report_static_error(FileNonexistent)
             except PermissionError:
-                system.reportStaticError(InsufficientPermission)
+                system.report_static_error(InsufficientPermission)
             except Exception as e:
-                system.reportStaticError(UnknownError, e)
+                system.report_static_error(UnknownError, e)
 
 
 class CreateFile:
@@ -612,17 +651,17 @@ class CreateFile:
             filename (str): The name of the file to be created
         """
         if filename.startswith("/"):
-            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            system.report_static_error(DirectoryNonexistent, "Directories are not to be specified with \"/\" character")
             return
 
-        filedir = Directory + "/" + filename
+        filedir = directory + "/" + filename
         try:
             with open(filedir, 'w') as file:
                 pass
             system.write(
-                f"SYSTEM OUTPUT\n* Created file <{filename}>", color=SystemOut)
+                f"SYSTEM OUTPUT\n* Created file <{filename}>", color=SYSTEM_OUT)
         except Exception as e:
-            system.reportStaticError(UnknownError, e)
+            system.report_static_error(UnknownError, e)
 
 
 class DeleteFile:
@@ -636,20 +675,20 @@ class DeleteFile:
             filename (str): The name of the file to be removed
         """
         if filename.startswith("/"):
-            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            system.report_static_error(DirectoryNonexistent, "Directories are not to be specified with \"/\" character")
             return
 
-        filedir = Directory + "/" + filename
+        filedir = directory + "/" + filename
         try:
             os.remove(filedir)
             system.write(
-                f"SYSTEM OUTPUT\n* Deleted file <{filename}>", color=SystemOut)
+                f"SYSTEM OUTPUT\n* Deleted file <{filename}>", color=SYSTEM_OUT)
         except FileNotFoundError:
-            system.reportStaticError(FileNonexistent)
+            system.report_static_error(FileNonexistent)
         except PermissionError:
-            system.reportStaticError(InsufficientPermission)
+            system.report_static_error(InsufficientPermission)
         except Exception as e:
-            system.reportStaticError(UnknownError, e)
+            system.report_static_error(UnknownError, e)
 
 
 class DeleteDirectory:
@@ -663,20 +702,20 @@ class DeleteDirectory:
             dirname (str): The name of the directory to be removed
         """
         if dirname.startswith("/"):
-            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            system.report_static_error(DirectoryNonexistent, "Directories are not to be specified with \"/\" character")
             return
         
-        filedir = Directory + "/" + dirname
+        filedir = directory + "/" + dirname
         try:
             shutil.rmtree(filedir)
             system.write(
-                f"SYSTEM OUTPUT\n* Deleted directory <{dirname}>", color=SystemOut)
+                f"SYSTEM OUTPUT\n* Deleted directory <{dirname}>", color=SYSTEM_OUT)
         except FileNotFoundError:
-            system.reportStaticError(FileNonexistent)
+            system.report_static_error(FileNonexistent)
         except PermissionError:
-            system.reportStaticError(InsufficientPermission)
+            system.report_static_error(InsufficientPermission)
         except Exception as e:
-            system.reportStaticError(UnknownError, e)
+            system.report_static_error(UnknownError, e)
 
 
 class RunExecutable:
@@ -690,10 +729,10 @@ class RunExecutable:
             filename (str): The name of the executable file to be run
         """
         if filename.startswith("/"):
-            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            system.report_static_error(DirectoryNonexistent, "Directories are not to be specified with \"/\" character")
             return
 
-        filedir = Directory + "/" + filename
+        filedir = directory + "/" + filename
         extn = filestm.fileExtension(filedir)
         try:
             if extn == "py":
@@ -719,18 +758,18 @@ class RunExecutable:
             elif extn == "gleam":
                 os.system(f"gleam run {filename}")
             else:
-                system.reportStaticError(
+                system.report_static_error(
                     UnsupportedFile, f"{extn} is not supported")
 
         except FileNotFoundError:
-            system.reportStaticError(FileNonexistent)
+            system.report_static_error(FileNonexistent)
         except PermissionError:
-            system.reportStaticError(InsufficientPermission)
+            system.report_static_error(InsufficientPermission)
         except subprocess.CalledProcessError as e:
             system.write(
-                f"SYSTEM OUTPUT\n* <{filename}> exited with status {e.returncode}", color=SystemOut)
+                f"SYSTEM OUTPUT\n* <{filename}> exited with status {e.returncode}", color=SYSTEM_OUT)
         except Exception as e:
-            system.reportStaticError(UnknownError, e)
+            system.report_static_error(UnknownError, e)
 
 
 class ViewFile:
@@ -744,22 +783,22 @@ class ViewFile:
             filename (str): The name of the file to be displayed
         """
         if filename.startswith("/"):
-            system.reportStaticError(DirectoryNonexistent, "Directories are not to be specified with \"/\" caracter")
+            system.report_static_error(DirectoryNonexistent, "Directories are not to be specified with \"/\" character")
             return
 
-        filedir = Directory + "/" + filename
+        filedir = directory + "/" + filename
         try:
             with open(filedir, 'r') as file:
                 contents = file.read()
                 system.write(
-                    f"SYSTEM OUTPUT\n* Contents of <{filename}>:\n\n{contents}", color=SystemOut)
+                    f"SYSTEM OUTPUT\n* Contents of <{filename}>:\n\n{contents}", color=SYSTEM_OUT)
         except FileNotFoundError:
-            system.reportStaticError(FileNonexistent)
+            system.report_static_error(FileNonexistent)
         except Exception as e:
-            system.reportStaticError(UnknownError, e)
+            system.report_static_error(UnknownError, e)
 
-def runEditor(stdscr, filename):
-    editor = NanoPy(stdscr, current_dir=Directory, filename=filename)
+def run_editor(stdscr, filename):
+    editor = NanoPy(stdscr, current_dir=directory, filename=filename)
     editor.run()
 # -----------------------------
 # INSTANTIATE COMMAND CLASSES
@@ -779,131 +818,135 @@ view = ViewFile()
 # -----------------------------
 # RUN SETUP SCRIPTS
 # -----------------------------
-system.setCommandHelp()
-system.update_Colors()
-system.updatePrompt()
-system.disableCommandFlow()
+system.set_command_help()
+system.update_colors()
+system.update_prompt()
+system.disable_command_flow()
 # -----------------------------
 # MAIN LOOP
 # -----------------------------
 autorun = ""
 while running:
-    system.updatePrompt()  # Update the prompt with current directory and username
+    system.update_prompt()  # Update the prompt with current directory and username
 #TODO: Fix problem that arrises when dirname starts with "/"
     try:
         tmp = input(Prompt)
-        if tmp == CurrentCommands[12]:
+        if tmp == current_commands[12]:
+            if not autorun:
+                system.report_static_error(CacheEmpty, "Command \"aexe\" has nothing to run")
+                continue
             tmp = autorun
+            autorun = ""
 
-        command = system.getFunction(tmp)
-        args = system.getArgs(tmp)
+        command = system.get_function(tmp)
+        args = system.get_args(tmp)
 
         
 
-        if command == CurrentCommands[0]:  # con, List files
+        if command == current_commands[0]:  # con, List files
             try:
                 con.run(arg=args[0])
             except Exception as e:
                 con.run()
 
-        elif command == CurrentCommands[1]:  # rlc, Change directory
+        elif command == current_commands[1]:  # rlc, Change directory
             try:
                 rlc.run(args[0])
             except IndexError:
-                system.reportStaticError(NonexistentParameter)
+                system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.reportStaticError(UnknownError, e)
+                system.report_static_error(UnknownError, e)
 
-        elif command == CurrentCommands[2]:  # dir, Print current directory
+        elif command == current_commands[2]:  # dir, Print current directory
             dir.run()
 
-        elif command == CurrentCommands[3]:  # wipe, Clear output
+        elif command == current_commands[3]:  # wipe, Clear output
             try:
                 wipe.run(int(args[0]))
             except Exception as e:
                 wipe.run(0)
 
-        elif command == CurrentCommands[4]:  # bam, Exit SYSOS
+        elif command == current_commands[4]:  # bam, Exit SYSOS
             bam.run()
 
-        elif command == CurrentCommands[5]:  # ch, Change username or command
+        elif command == current_commands[5]:  # ch, Change username or command
             try:
                 ch.run(args[0], args[1], args[2] == "root")
             except Exception as e:
                 try:
                     ch.run(args[0], args[1])
                 except IndexError:
-                    system.reportStaticError(NonexistentParameter)
+                    system.report_static_error(NonexistentParameter)
                 except Exception as e:
-                    system.reportStaticError(UnknownError, e)
+                    system.report_static_error(UnknownError, e)
 
-        elif command == CurrentCommands[6]:  # make, Create a new file
+        elif command == current_commands[6]:  # make, Create a new file
             try:
                 make.run(args[0])
             except IndexError:
-                system.reportStaticError(NonexistentParameter)
+                system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.reportStaticError(UnknownError, e)
+                system.report_static_error(UnknownError, e)
 
-        elif command == CurrentCommands[7]:  # rmv, Remove a file
+        elif command == current_commands[7]:  # rmv, Remove a file
             try:
                 rmv.run(args[0])
             except IndexError:
-                system.reportStaticError(NonexistentParameter)
+                system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.reportStaticError(UnknownError, e)
+                system.report_static_error(UnknownError, e)
 
         
-        elif command == CurrentCommands[8]:  # rmvdir, Remove a directory and all its contents
+        elif command == current_commands[8]:  # rmvdir, Remove a directory and all its contents
             try:
                 rmvdir.run(args[0])
             except IndexError:
-                system.reportStaticError(NonexistentParameter)
+                system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.reportStaticError(UnknownError, e)
+                system.report_static_error(UnknownError, e)
 
-        elif command == CurrentCommands[9]:  # run, Run an executable file
+        elif command == current_commands[9]:  # run, Run an executable file
             try:
                 runExe.run(args[0])
             except IndexError:
-                system.reportStaticError(NonexistentParameter)
+                system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.reportStaticError(UnknownError, e)
+                system.report_static_error(UnknownError, e)
 
         # view, View the contents of a file
-        elif command == CurrentCommands[10]:
+        elif command == current_commands[10]:
             try:
                 view.run(args[0])
             except IndexError:
-                system.reportStaticError(NonexistentParameter)
+                system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.reportStaticError(UnknownError, e)
+                system.report_static_error(UnknownError, e)
 
-        elif command == CurrentCommands[11]:
+        elif command == current_commands[11]:
             filetoopen = args[0]
             try:
-                curses.wrapper(lambda stdscr: runEditor(stdscr, filename=filetoopen))
+                curses.wrapper(lambda stdscr: run_editor(stdscr, filename=filetoopen))
             except Exception as e:
-                system.reportStaticError(UnknownError, {e})
+                system.report_static_error(UnknownError, {e})
 
         # elif command == CurrentCommands[11]:    #help, Display help message
         else:
-            system.reportStaticError(InvalidCommand)
-            fixed = system.didYouMean(command)
+            system.report_static_error(InvalidCommand)
+            fixed = system.did_you_mean(command)
             if fixed == "No fixes available.":
                 system.write(fixed)
             else:
-                system.write(f"{system.didYouMean(command)}", "If you want to automatically execute this,", "type \"aexe\"", color=Advice)
+                system.write(f"{system.did_you_mean(command)}", "If you want to automatically execute this,", "type \"aexe\"", color=ADVICE)
                 if args != []:
-                    autorun = system.didYouMean(command, returnFix=True)[0] + " " + " ".join(args)
+                    autorun = system.did_you_mean(command, return_fix=True)[0] + " " + " ".join(args)
                 else:
-                    autorun = system.didYouMean(command, returnFix=True)[0]
+                    autorun = system.did_you_mean(command, return_fix=True)[0]
                 
 
     except KeyboardInterrupt:
         print()
-        system.reportStaticError(UserInterrupt)
+        system.report_static_error(UserInterrupt)
         system.write(
-            "SYSTEM ADVICE", f"If you want to terminate, please use <{CurrentCommands[4]}>", color=Advice)
+            "SYSTEM ADVICE", f"If you want to terminate, please use <{current_commands[4]}>", color=ADVICE)
     except IndexError:
-        system.reportStaticError(InvalidCommand)
+        system.report_static_error(InvalidCommand)

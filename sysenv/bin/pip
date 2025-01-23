@@ -1,4 +1,4 @@
-#!/Users/Micah/Documents/Tech/Coding/Programs/Python/SYSOS/myenv/bin/python3.12
+#!/Users/Micah/Documents/Tech/Coding/Programs/Python/SYSOS/sysenv/bin/python3.12
 # -*- coding: utf-8 -*-
 import re
 import sys
