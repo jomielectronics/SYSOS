@@ -115,6 +115,9 @@ UserInterrupt = CustomError(
     "Program interrupted by user", error_codes["CTRL_C_TERM"])
 NonexistentParameter = CustomError(
     "A parameter was needed, but not found.", error_codes["BAD_BUILTIN"])
+InvalidCommand = CustomError(
+    "Command not recognized", error_codes["CMD_NOT_FOUND"])
+
 
 # -----------------------------
 # DEFINE SYSTEM CLASSES
@@ -861,7 +864,7 @@ while running:
 
         # elif command == CurrentCommands[11]:    #help, Display help message
         else:
-            system.reportFatalError(UnknownError)
+            system.reportStaticError(InvalidCommand)
 
     except KeyboardInterrupt:
         print()
