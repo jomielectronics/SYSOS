@@ -32,10 +32,10 @@ username = os.environ.get("LOGNAME") or os.environ.get(
 modules = ["time", "random", "pyautogui", "pynput", "tqdm", "os", "sys",
            "difflib", "json", "termcolor", "dataclasses", "subprocess", "shutil"]
 CurrentCommands = ["con", "rlc", "dir", "wipe", "bam", "ch",
-                   "make", "rmv", "rmvdir", "run", "view", "edit", "sysos", "errtest"]
+                   "make", "rmv", "rmvdir", "run", "view", "edit", "aexe", "sysos", "errtest"]
 CmdPreset = "SYSOS Commands"  # Current active command preset
 SysosCommands = ["con", "rlc", "dir", "wipe", "bam", "ch",
-                   "make", "rmv", "rmvdir", "run", "view", "edit", "sysos", "errtest"]  # Default SYSOS commands
+                   "make", "rmv", "rmvdir", "run", "view", "edit", "aexe", "sysos", "errtest"]  # Default SYSOS commands
 UnixCommands = ["ls", "cd", "pwd", "clear", "exit", "ch",
                 "touch", "rm", "run", "open", "sysos"]  # Unix commands
 
@@ -173,12 +173,27 @@ class necessaryFunctions:
         Program = FILE_COLORS["Program"]
         Other = FILE_COLORS["Other"]
 
-    def didYouMean(self, item, matches=CurrentCommands):
-        """Suggests similar commands when input is invalid."""
+    def didYouMean(self, item, matches=CurrentCommands, returnFix=False):
+        """Get closes command to the one entered
+
+        Args:
+            item (str): the command to search
+            matches (list, optional): The list to search through. Defaults to CurrentCommands.
+
+        Returns:
+            str: A simple message describing that it couldn't find that
+        """
         fix = difflib.get_close_matches(item, matches)
-        if fix:
-            return colored(f"Maybe you meant '{', '.join(fix)}'?", Advice)
-        return colored("No fixes available.", Advice)
+        if returnFix:
+            if fix:
+                return fix
+            else:
+                return None
+        else:
+            if fix:
+                return f"Maybe you meant '{', '.join(fix)}'?"
+            return "No fixes available."
+
 
     def getArgs(self, idx):
         """Extracts arguments from a user input string."""
@@ -387,7 +402,7 @@ class fileSystem:
 system = necessaryFunctions()
 typing = system.typingFunctions()
 filestm = fileSystem()
-
+typing = system.typingFunctions()
 # -----------------------------
 # COMMAND CLASSES
 # Includes the following commands:
@@ -769,6 +784,7 @@ system.disableCommandFlow()
 # -----------------------------
 # MAIN LOOP
 # -----------------------------
+autorun = ""
 while running:
     system.updatePrompt()  # Update the prompt with current directory and username
 #TODO: Fix problem that arrises when dirname starts with "/"
@@ -776,6 +792,10 @@ while running:
         tmp = input(Prompt)
         command = system.getFunction(tmp)
         args = system.getArgs(tmp)
+
+        if command == CurrentCommands[12]:
+            command = autorun
+
         if command == CurrentCommands[0]:  # con, List files
             try:
                 con.run(arg=args[0])
@@ -865,9 +885,20 @@ while running:
         # elif command == CurrentCommands[11]:    #help, Display help message
         else:
             system.reportStaticError(InvalidCommand)
+            fixed = system.didYouMean(command)
+            if fixed == "No fixes available.":
+                system.write(fixed)
+            else:
+                system.write(f"{system.didYouMean(command)}", "If you want to automatically execute this,", "type \"aexe\"", color=Advice)
+
+                autorun = system.didYouMean(command, returnFix=True)[0]
+                print(autorun)
+                
 
     except KeyboardInterrupt:
         print()
         system.reportStaticError(UserInterrupt)
         system.write(
             "SYSTEM ADVICE", f"If you want to terminate, please use <{CurrentCommands[4]}>", color=Advice)
+    except IndexError:
+        system.reportStaticError(InvalidCommand)
