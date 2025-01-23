@@ -1,8 +1,6 @@
 
-## Install Dependencies
-***Important: If you wish not to install these dependencies, you can active the virtual environment with the dependencies already installed. To do so, run the following command (in the SYSOS directory): `source myenv/bin/activate`. Installing the dependencies after this is not necessary.***
-
-### MAC / LINUX
+## Installing Dependencies
+#### MAC / LINUX
 In Mac or linux, run `bash Dependencies.sh`
 
 ## Usage
