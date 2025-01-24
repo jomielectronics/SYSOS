@@ -25,6 +25,7 @@ import subprocess
 import shutil
 import curses
 from nano_py import NanoPy
+
 # -----------------------------
 # DEFINE VARIABLES
 # -----------------------------
@@ -40,45 +41,47 @@ username = os.environ.get("LOGNAME") or os.environ.get(
 modules = ["time", "random", "pyautogui", "pynput", "tqdm", "os", "sys",
            "difflib", "json", "termcolor", "dataclasses", "subprocess", "shutil"]
 
-current_commands = ["con", "rlc", "dir", "wipe", "bam", "ch",
-                   "make", "rmv", "rmvdir", "run", "view", "edit", "aexe", "sysos", "errtest"]
-active_preset = "SYSOS Commands"  # Current active command preset
+active_preset = "sysos_commands"  # Current active command preset
 
 sysos_commands = [
-    "con",       # List files
-    "rlc",       # Change directory
-    "dir",       # Current directory
-    "wipe",      # Clear output
-    "bam",       # Exit SYSOS
-    "ch",        # Change command
-    "make",      # Make a file
-    "rmv",       # Remove file
-    "rmvdir",    # Remove directory
-    "run",       # Run an executable
-    "view",      # View a file
-    "edit",      # Edit a file
-    "aexe",      # Run the autosuggested command
-    "sysos",     # SYSOS command
-    "errtest"    # Test error catching
+    "con",      # List files
+    "rlc",      # Change directory
+    "dir",      # Current directory
+    "wipe",     # Clear output
+    "bam",      # Exit SYSOS
+    "ch",       # Change command
+    "make",     # Make a file
+    "rmv",      # Remove file
+    "rmvdir",   # Remove directory
+    "run",      # Run an executable
+    "view",     # View a file
+    "edit",     # Edit a file
+    "aexe",     # Run the autosuggested command
+    "help",     # Show help for passed command
+    "sysos",    # SYSOS command
+    "errtest"   # Test error catching
 ]
 
 unix_commands = [
-    "ls",         # List files (equivalent to "con")
-    "cd",         # Change directory (equivalent to "rlc")
-    "pwd",        # Current directory (equivalent to "dir")
-    "clear",      # Clear output (equivalent to "wipe")
-    "exit",       # Exit shell (equivalent to "bam")
-    "alias",      # Change command (equivalent to "ch")
-    "touch",      # Make a file (equivalent to "make")
-    "rm",         # Remove file (equivalent to "rmv")
-    "rmdir",      # Remove directory (equivalent to "rmvdir")
-    "./<file>",   # Run an executable (equivalent to "run")
-    "cat",        # View a file (equivalent to "view")
-    "nano",       # Edit a file (equivalent to "edit")
-    "!!",         # Run the last command (equivalent to "aexe")
-    "uname -a",   # System command (equivalent to "sysos")
-    "false"       # Generate an error (equivalent to "errtest")
+    "ls",       # List files (equivalent to "con")
+    "cd",       # Change directory (equivalent to "rlc")
+    "pwd",      # Current directory (equivalent to "dir")
+    "clear",    # Clear output (equivalent to "wipe")
+    "exit",     # Exit shell (equivalent to "bam")
+    "alais",    # Change command (equivalent to "ch")
+    "touch",    # Make a file (equivalent to "make")
+    "rm",       # Remove file (equivalent to "rmv")
+    "rmdir",    # Remove directory (equivalent to "rmvdir")
+    "./",       # Run an executable (equivalent to "run")
+    "cat",      # View a file (equivalent to "view")
+    "nano",     # Edit a file (equivalent to "edit")
+    "!!",       # Run the last command (equivalent to "aexe")
+    "man",      # Show help for passed command (equivalent to "help")
+    "sysos",    # System command (equivalent to "sysos")
+    "false"     # Generate an error (equivalent to "errtest")
 ]
+
+current_commands = sysos_commands[:]
 
 # System settings
 HOME = os.environ.get("HOME")
@@ -130,15 +133,12 @@ ERROR_CODES = {
 # -----------------------------
 # DEFINE CUSTOM ERRORS
 # -----------------------------
-
-
 @dataclass
 class CustomError:
     """A simple object to represent an error."""
     # type: str  # Type of the error (e.g., 'NotFound', 'Validation')
     message: str  # A human-readable error message
     code: int  # The error code
-
 
 ImpliedDirectory = CustomError(
     "This error is for internal use only.", ERROR_CODES["SUCCESS"])
@@ -160,12 +160,9 @@ InvalidCommand = CustomError(
 CacheEmpty = CustomError(
     "Cache is empty", ERROR_CODES["SEG_FAULT"])
 
-
 # -----------------------------
 # DEFINE SYSTEM CLASSES
 # -----------------------------
-
-
 class NecessaryFunctions:
     def disable_command_flow(self):
         os.system("stty -ixon")
@@ -181,15 +178,17 @@ class NecessaryFunctions:
         command_help = {
             current_commands[0]: "Lists the contents of the current directory",
             current_commands[1]: "Changes the current directory",
-            current_commands[2]: "Lists the current directory",
+            current_commands[2]: "Displays the current directory",
             current_commands[3]: "Clears the system output",
             current_commands[4]: "Returns to your default terminal",
-            current_commands[5]: "A generic command for renaming, editing commands, or changing username",
+            current_commands[5]: "A generic command for renaming files,\n* editing commands,\n* or changing your username",
             current_commands[6]: "Creates files and folders",
             current_commands[7]: "Deletes files or folders",
             current_commands[8]: "Executes commands in the default terminal",
             current_commands[9]: "Displays the contents of a file",
-            current_commands[11]: "Runs error-catching subroutines to ensure functionality"
+            current_commands[11]: "Runs error-catching subroutines to ensure functionality",
+            current_commands[12]: "Executes auto-suggested commands",
+            current_commands[13]: "Displays help information the passed command\n* (It's kind of obvious)"
         }
 
     def clear_output_lines(self, lines=0):
@@ -463,6 +462,7 @@ typing = system.TypingFunctions()
 # "view"        View a file
 # "edit"        Edit a file
 # "aexe"        Run the auto-suggested command
+# "help"        Show help for passed command
 # "sysos"       SYSOS command
 # "errtest"     Test error catching
 # -----------------------------
@@ -805,9 +805,30 @@ class ViewFile:
         except Exception as e:
             system.report_static_error(UnknownError, e)
 
+
 def run_editor(stdscr, filename):
     editor = NanoPy(stdscr, current_dir=directory, filename=filename)
     editor.run()
+
+
+class ShowHelp():
+    def __init__(self):
+        pass
+
+    def run(self, command):
+        """Show help for passed command
+
+        Args:
+            command (str): The command to search for help for
+        """
+        system.write(command_help[command], color=SYSTEM_OUT)
+
+class SYSOS():
+    def __init__(self):
+        pass
+
+    def config():
+        pass
 # -----------------------------
 # INSTANTIATE COMMAND CLASSES
 # -----------------------------
@@ -822,6 +843,7 @@ rmv = DeleteFile()
 rmvdir = DeleteDirectory()
 runExe = RunExecutable()
 view = ViewFile()
+help = ShowHelp()
 
 # -----------------------------
 # RUN SETUP SCRIPTS
@@ -830,6 +852,7 @@ system.set_command_help()
 system.update_colors()
 system.update_prompt()
 system.disable_command_flow()
+
 # -----------------------------
 # MAIN LOOP
 # -----------------------------
@@ -847,9 +870,7 @@ while running:
             autorun = ""
 
         command = system.get_function(tmp)
-        args = system.get_args(tmp)
-
-        
+        args = system.get_args(tmp)        
 
         if command == current_commands[0]:  # con, List files
             try:
@@ -937,7 +958,14 @@ while running:
             except Exception as e:
                 system.report_static_error(UnknownError, {e})
 
-        # elif command == CurrentCommands[11]:    #help, Display help message
+        elif command == current_commands[13]:    #help, Display help message
+            try:
+                help.run(args[0])
+            except IndexError:
+                system.report_static_error(NonexistentParameter)
+            except Exception as e:
+                system.report_static_error(UnknownError, e)
+
         else:
             system.report_static_error(InvalidCommand)
             fixed = system.did_you_mean(command)
