@@ -25,13 +25,14 @@ import subprocess
 import shutil
 import curses
 from nano_py import NanoPy
+from menus import Menu
 
 # -----------------------------
 # DEFINE VARIABLES
 # -----------------------------
 vsn = "0.3.1"  # The SYSOS version
 throttle_speed = 0  # Speed for processing operations
-config_version = 1.0  # Configuration tool version
+config_version = "0.9.9"  # Configuration tool version
 GITHUB = "https://github.com/jomielec/SYSOS/issues"  # GitHub repository link
 first_time_running = True  # Is this the first run of the program?
 username = os.environ.get("LOGNAME") or os.environ.get(
@@ -444,6 +445,7 @@ system = NecessaryFunctions()
 typing = system.TypingFunctions()
 filestm = FileSystem()
 typing = system.TypingFunctions()
+sysos_menu = Menu(config_version)
 
 # -----------------------------
 # COMMAND CLASSES
@@ -827,8 +829,10 @@ class SYSOS():
     def __init__(self):
         pass
 
-    def config():
-        pass
+    def config(self):
+        """Display system configuration"""
+        curses.wrapper(sysos_menu.main_menu)
+        
 # -----------------------------
 # INSTANTIATE COMMAND CLASSES
 # -----------------------------
@@ -844,6 +848,7 @@ rmvdir = DeleteDirectory()
 runExe = RunExecutable()
 view = ViewFile()
 help = ShowHelp()
+sysos = SYSOS()
 
 # -----------------------------
 # RUN SETUP SCRIPTS
@@ -965,6 +970,9 @@ while running:
                 system.report_static_error(NonexistentParameter)
             except Exception as e:
                 system.report_static_error(UnknownError, e)
+        
+        elif command == current_commands[14]:    #sysos, Display system configuration
+            sysos.config()
 
         else:
             system.report_static_error(InvalidCommand)
