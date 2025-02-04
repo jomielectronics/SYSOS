@@ -164,10 +164,17 @@ class Menu:
                 elif current_row == self.main_menus.index("Color Themes"):
                     curses.wrapper(self.color_themes)
                     break
-                # Add actions for other menu items here
-                self.display_message(stdscr, f"You selected: {selected_item}", color=curses.A_BOLD)
-                stdscr.refresh()
-                curses.napms(1000)  # Pause for a moment to show the message
+
+                elif current_row == self.main_menus.index("About"):
+                    self.display_message(stdscr, "About page is currently not supported.", color=curses.A_BOLD)
+                    stdscr.refresh()
+                    curses.napms(1000)  # Pause for a moment to show the message
+                else:
+
+                    # Add actions for other menu items here
+                    self.display_message(stdscr, f"You selected: {selected_item}", color=curses.A_BOLD)
+                    stdscr.refresh()
+                    curses.napms(1000)  # Pause for a moment to show the message
 
     def command_presets(self, stdscr):
         # Disable cursor
