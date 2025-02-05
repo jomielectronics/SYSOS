@@ -26,6 +26,7 @@ import shutil
 import curses
 from nano_py import NanoPy
 from menus import Menu
+import toml
 
 # -----------------------------
 # DEFINE VARIABLES
@@ -89,6 +90,7 @@ HOME = os.environ.get("HOME")
 directory = HOME  # Current directory
 history = []  # History of executed commands
 running = True
+config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.toml")
 
 # Output and file colors
 OUTPUT_COLORS = {
@@ -165,6 +167,18 @@ CacheEmpty = CustomError(
 # DEFINE SYSTEM CLASSES
 # -----------------------------
 class NecessaryFunctions:
+    def refresh_prefrences(self):
+        global active_preset, OUTPUT_COLORS, FILE_COLORS
+        """Refreshes the system's preferences."""
+        with open(config_path, "r") as f:
+            data = toml.load(f)
+
+        # Assign sections to variables
+        active_preset = data.get("selected_preset", "None")  # Default to "None" if missing
+        OUTPUT_COLORS = data.get("output_colors", {})
+        FILE_COLORS = data.get("file_colors", {})
+        print(FILE_COLORS)
+            
     def disable_command_flow(self):
         os.system("stty -ixon")
 
@@ -987,6 +1001,8 @@ while running:
         
         elif command == current_commands[14]:    #sysos, Display system configuration
             sysos.config()
+            system.refresh_prefrences()
+            system.update_colors()
 
         else:
             system.report_static_error(InvalidCommand)

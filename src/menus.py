@@ -1,6 +1,9 @@
 import curses
+import toml
+import os
 class Menu:
     def __init__(self, version) -> None:
+
         self.version = version
         self.main_menus = [
             "Command Presets",
@@ -54,10 +57,15 @@ class Menu:
         self.all_types = self.text_types + self.file_types
 
     def onkill(self):
-        with open("user.pref", "w+") as f:
-            f.write(f"selected_preset={self.selected_preset}\n")
-            f.write(f"output_colors={self.output_colors}\n")
-            f.write(f"file_colors={self.file_colors}\n")
+        config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.toml")
+        data = {
+            "selected_preset": "" if self.selected_preset is None else self.selected_preset,
+            "output_colors": self.output_colors,
+            "file_colors": self.file_colors
+        }
+        
+        with open(config_path, "w") as f:
+            toml.dump(data, f)
 
 
     def show_title(self, w, h, stdscr, menu, v_offset=1):

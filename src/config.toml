@@ -1,0 +1,15 @@
+selected_preset = ""
+
+[output_colors]
+Error = "red"
+Warning = "light_green"
+SystemOut = "yellow"
+Advice = "magenta"
+Other = "yellow"
+cPrompt = "dark_grey"
+
+[file_colors]
+Direc = "magenta"
+Text = "blue"
+Program = "green"
+Other = "yellow"
