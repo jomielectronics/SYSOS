@@ -285,6 +285,17 @@ class NecessaryFunctions:
     @staticmethod
     def write(*ipt, color=None):
         """Prints a neatly formatted message to the console."""
+        # if ipt[0] == "help":
+        #     if color:
+        #         print(colored("*", color))
+        #         for i in current_commands:
+        #             print(colored(f"* {i}", color))
+        #         print(colored("*", color))
+        #     else:
+        #         print("*")
+        #         for i in ipt:
+        #             print(f"* {i}")
+        #         print("*")
         if color:
             print(colored("*", color))
             for i in ipt:
@@ -823,7 +834,10 @@ class ShowHelp():
         Args:
             command (str): The command to search for help for
         """
-        system.write(command_help[command], color=SYSTEM_OUT)
+        if command == "list":
+            system.write(*current_commands, color=SYSTEM_OUT)
+        else:
+            system.write(command_help[command], color=SYSTEM_OUT)
 
 class SYSOS():
     def __init__(self):
