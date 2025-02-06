@@ -1,15 +1,15 @@
-selected_preset = ""
+selected_preset = "Unix"
 
 [output_colors]
 Error = "red"
 Warning = "light_green"
 SystemOut = "yellow"
 Advice = "magenta"
-Other = "yellow"
+Other = "white"
 cPrompt = "dark_grey"
 
 [file_colors]
-Direc = "magenta"
-Text = "blue"
+Direc = "blue"
+Text = "magenta"
 Program = "green"
 Other = "yellow"

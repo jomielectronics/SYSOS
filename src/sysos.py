@@ -43,7 +43,7 @@ username = os.environ.get("LOGNAME") or os.environ.get(
 modules = ["time", "random", "pyautogui", "pynput", "tqdm", "os", "sys",
            "difflib", "json", "termcolor", "dataclasses", "subprocess", "shutil"]
 
-active_preset = "sysos_commands"  # Current active command preset
+active_preset = "SYSOS"  # Current active command preset
 
 sysos_commands = [
     "con",      # List files
@@ -213,7 +213,13 @@ class NecessaryFunctions:
         else:
             for _ in range(lines):
                 print("\033[A\033[2K", end="")
-
+    def update_commands(self):
+        global current_commands
+        if active_preset == "SYSOS":
+            current_commands = sysos_commands[:]
+        elif active_preset == "Unix":
+            current_commands = unix_commands[:]
+            
     def update_colors(self):
         """Updates global variables with current output and file colors."""
         global ERROR, WARNING, SYSTEM_OUT, ADVICE, OTHER, C_PROMPT, DIREC, TEXT, PROGRAM, OTHER
@@ -1002,6 +1008,7 @@ while running:
         elif command == current_commands[14]:    #sysos, Display system configuration
             sysos.config()
             system.refresh_prefrences()
+            system.update_commands()
             system.update_colors()
 
         else:
