@@ -193,8 +193,18 @@ class NecessaryFunctions:
         self.update_colors()
         global active_preset, OUTPUT_COLORS, FILE_COLORS
         """Refreshes the system's preferences."""
-        with open(config_path, "r") as f:
-            data = toml.load(f)
+        try:
+            with open(config_path, "r+") as f:
+                data = toml.load(f)
+        except Exception:
+            data = {
+                    "selected_preset": active_preset,
+                    "output_colors": OUTPUT_COLORS,
+                    "file_colors": FILE_COLORS
+                }
+            
+            with open(config_path, "w+") as f:
+                toml.dump(data, f)
 
         # Assign sections to variables
         active_preset = data.get("selected_preset", "None")  # Default to "None" if missing
