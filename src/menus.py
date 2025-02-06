@@ -112,9 +112,55 @@ class Menu:
         stdscr.addstr(h - 1, 0, message, color)
         stdscr.refresh()
 
+    def initialize_colors(self):
+        """ Ensure all text appears on a black background """
+        curses.start_color()  # Initialize color support
+        curses.use_default_colors()  # Allow transparency
+
+        # Standard curses colors
+        color_mapping = {
+            "black": curses.COLOR_BLACK,
+            "red": curses.COLOR_RED,
+            "green": curses.COLOR_GREEN,
+            "yellow": curses.COLOR_YELLOW,
+            "blue": curses.COLOR_BLUE,
+            "magenta": curses.COLOR_MAGENTA,
+            "cyan": curses.COLOR_CYAN,
+            "white": curses.COLOR_WHITE
+        }
+
+        # Extended colors (if terminal supports them)
+        if curses.can_change_color():
+            curses.init_color(8, 500, 500, 500)    # light_grey
+            curses.init_color(9, 250, 250, 250)    # dark_grey
+            curses.init_color(10, 1000, 500, 500)  # light_red
+            curses.init_color(11, 500, 1000, 500)  # light_green
+            curses.init_color(12, 1000, 1000, 500) # light_yellow
+            curses.init_color(13, 500, 500, 1000)  # light_blue
+            curses.init_color(14, 1000, 500, 1000) # light_magenta
+            curses.init_color(15, 500, 1000, 1000) # light_cyan
+
+            color_mapping.update({
+                "light_grey": 8,
+                "dark_grey": 9,
+                "light_red": 10,
+                "light_green": 11,
+                "light_yellow": 12,
+                "light_blue": 13,
+                "light_magenta": 14,
+                "light_cyan": 15
+            })
+
+        # Apply colors with BLACK background
+        for i, (name, color) in enumerate(color_mapping.items(), start=1):
+            curses.init_pair(i, color, curses.COLOR_BLACK)  # Black background
+
     def main_menu(self, stdscr):
-        # Disable cursor
-        curses.curs_set(0)
+        curses.curs_set(0)  # Hide cursor
+        self.initialize_colors()  # Reapply color pairs
+
+        stdscr.bkgd(' ', curses.color_pair(1))  # Set black background globally
+        stdscr.clear()
 
         # Calculate the length of the longest menu item
         max_length = max(len(f"{item}") for item in self.main_menus)
@@ -167,11 +213,9 @@ class Menu:
                     curses.napms(1000)  # Pause for 1 second
                     break
                 elif current_row == self.main_menus.index("Command Presets"):
-                    curses.wrapper(self.command_presets)
-                    break
+                    self.command_presets(stdscr)
                 elif current_row == self.main_menus.index("Color Themes"):
-                    curses.wrapper(self.color_themes)
-                    break
+                    self.color_themes(stdscr)  # Call directly instead of using wrapper
 
                 elif current_row == self.main_menus.index("About"):
                     self.display_message(stdscr, "About page is currently not supported.", color=curses.A_BOLD)
@@ -234,8 +278,7 @@ class Menu:
                 self.selected_preset = self.avaliable_presets[current_row]
                 stdscr.refresh()
                 curses.napms(1000)  # Pause for a moment to show the message
-                curses.wrapper(self.main_menu)
-                break
+                return
     
     def color_themes(self, stdscr):
         curses.curs_set(0)
@@ -350,12 +393,17 @@ class Menu:
                 # Only update color for the current row item (text or file)
                 current_row_type = self.all_types[current_row]
                 color_indices[current_row_type] = (color_indices[current_row_type] + 1) % len(self.available_colors)
-            elif key == ord("\n"):
-                self.display_message(stdscr, f"Saving to cache.", color=curses.A_BOLD)
+            elif key == ord("\n"):  # Save settings and exit
+                # Save the new color choices permanently
+                for key in self.output_colors.keys():
+                    self.output_colors[key] = self.available_colors[color_indices[key]]
+                for key in self.file_colors.keys():
+                    self.file_colors[key] = self.available_colors[color_indices[key]]
+
+                self.display_message(stdscr, "Saving to cache...", curses.A_BOLD)
                 stdscr.refresh()
-                curses.napms(1000)  # Pause for a moment to show the message
-                curses.wrapper(self.main_menu)
-                break
+                curses.napms(1000)  # Pause to show the message
+                return  # Return instead of calling another `curses.wrapper()`
 
             # Update the color settings for the selected row
             selected_type = self.all_types[current_row]

@@ -27,6 +27,7 @@ import curses
 from nano_py import NanoPy
 from menus import Menu
 import toml
+import _curses
 
 # -----------------------------
 # DEFINE VARIABLES
@@ -81,6 +82,25 @@ unix_commands = [
     "man",      # Show help for passed command (equivalent to "help")
     "sysos",    # System command (equivalent to "sysos")
     "false"     # Generate an error (equivalent to "errtest")
+]
+
+windows_commands = [
+    "dir",      # List files
+    "cd",       # Change directory
+    "pwd",      # Current directory
+    "cls",      # Clear output
+    "exit",     # Exit SYSOS
+    "chg",      # Change command
+    "mkf",      # Make a file
+    "del",      # Remove file
+    "rmdir",    # Remove directory
+    "exec",     # Run an executable
+    "type",     # View a file
+    "mod",      # Edit a file
+    "auto",     # Run the autosuggested command
+    "help",     # Show help for passed command
+    "sysos",    # SYSOS command
+    "errchk"    # Test error catching
 ]
 
 current_commands = sysos_commands[:]
@@ -162,12 +182,15 @@ InvalidCommand = CustomError(
     "Command not recognized", ERROR_CODES["CMD_NOT_FOUND"])
 CacheEmpty = CustomError(
     "Cache is empty", ERROR_CODES["SEG_FAULT"])
-
+ScreenSizeError = CustomError(
+    "Screen size is too small to run this command", ERROR_CODES["IO_ERR"])
 # -----------------------------
 # DEFINE SYSTEM CLASSES
 # -----------------------------
 class NecessaryFunctions:
     def refresh_prefrences(self):
+        self.update_commands()
+        self.update_colors()
         global active_preset, OUTPUT_COLORS, FILE_COLORS
         """Refreshes the system's preferences."""
         with open(config_path, "r") as f:
@@ -177,14 +200,18 @@ class NecessaryFunctions:
         active_preset = data.get("selected_preset", "None")  # Default to "None" if missing
         OUTPUT_COLORS = data.get("output_colors", {})
         FILE_COLORS = data.get("file_colors", {})
-        print(FILE_COLORS)
+        # print(FILE_COLORS)
             
     def disable_command_flow(self):
         os.system("stty -ixon")
 
-    def update_prompt(self):
+    def update_prompt(self, error_code=None):
         global Prompt
-        Prompt = colored(f"{username}", "light_green") + "@" + colored(f"SYSOS",
+        if error_code:
+            Prompt = colored(f"{username}", "light_green") + "@" + colored(f"SYSOS",
+                                                                       "dark_grey") + " \u276f " + colored(directory, DIREC) + " \u276f |" + colored(error_code, ERROR) + "| " + "$ "
+        else:
+            Prompt = colored(username, "light_green") + "@" + colored(f"SYSOS",
                                                                        "dark_grey") + " \u276f " + colored(directory, DIREC) + " \u276f " + "$ "
 
     def set_command_help(self):
@@ -219,6 +246,8 @@ class NecessaryFunctions:
             current_commands = sysos_commands[:]
         elif active_preset == "Unix":
             current_commands = unix_commands[:]
+        elif active_preset == "Windows":
+            current_commands = windows_commands[:]
             
     def update_colors(self):
         """Updates global variables with current output and file colors."""
@@ -301,7 +330,7 @@ class NecessaryFunctions:
         else:
             print(colored(
                 f"* Static Error:\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", ERROR))
-
+        return error.code
     @staticmethod
     def write(*ipt, color=None):
         """Prints a neatly formatted message to the console."""
@@ -891,19 +920,21 @@ system.set_command_help()
 system.update_colors()
 system.update_prompt()
 system.disable_command_flow()
-
+system.refresh_prefrences()
 # -----------------------------
 # MAIN LOOP
 # -----------------------------
 autorun = ""
+error=0
 while running:
-    system.update_prompt()  # Update the prompt with current directory and username
-#TODO: Fix problem that arrises when dirname starts with "/"
+    system.update_prompt(error)  # Update the prompt with current directory and username
+    error = 0
+    #TODO: Fix problem that arrises when dirname starts with "/"
     try:
         tmp = input(Prompt)
         if tmp == current_commands[12]:
             if not autorun:
-                system.report_static_error(CacheEmpty, "Command \"aexe\" has nothing to run")
+                error = system.report_static_error(CacheEmpty, f"Command \"{current_commands[12]}\" has nothing to run")
                 continue
             tmp = autorun
             autorun = ""
@@ -921,9 +952,9 @@ while running:
             try:
                 rlc.run(args[0])
             except IndexError:
-                system.report_static_error(NonexistentParameter)
+                error = system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.report_static_error(UnknownError, e)
+                error = system.report_static_error(UnknownError, e)
 
         elif command == current_commands[2]:  # dir, Print current directory
             dir.run()
@@ -944,86 +975,85 @@ while running:
                 try:
                     ch.run(args[0], args[1])
                 except IndexError:
-                    system.report_static_error(NonexistentParameter)
+                    error = system.report_static_error(NonexistentParameter)
                 except Exception as e:
-                    system.report_static_error(UnknownError, e)
+                    error = system.report_static_error(UnknownError, e)
 
         elif command == current_commands[6]:  # make, Create a new file
             try:
                 make.run(args[0])
             except IndexError:
-                system.report_static_error(NonexistentParameter)
+                error = system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.report_static_error(UnknownError, e)
+                error = system.report_static_error(UnknownError, e)
 
         elif command == current_commands[7]:  # rmv, Remove a file
             try:
                 rmv.run(args[0])
             except IndexError:
-                system.report_static_error(NonexistentParameter)
+                error = system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.report_static_error(UnknownError, e)
+                error = system.report_static_error(UnknownError, e)
 
         
         elif command == current_commands[8]:  # rmvdir, Remove a directory and all its contents
             try:
                 rmvdir.run(args[0])
             except IndexError:
-                system.report_static_error(NonexistentParameter)
+                error = system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.report_static_error(UnknownError, e)
+                error = system.report_static_error(UnknownError, e)
 
         elif command == current_commands[9]:  # run, Run an executable file
             try:
                 runExe.run(args[0])
             except IndexError:
-                system.report_static_error(NonexistentParameter)
+                error = system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.report_static_error(UnknownError, e)
+                error = system.report_static_error(UnknownError, e)
 
         # view, View the contents of a file
         elif command == current_commands[10]:
             try:
                 view.run(args[0])
             except IndexError:
-                system.report_static_error(NonexistentParameter)
+                error = system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.report_static_error(UnknownError, e)
+                error = system.report_static_error(UnknownError, e)
 
         elif command == current_commands[11]:
             filetoopen = args[0]
             try:
                 curses.wrapper(lambda stdscr: run_editor(stdscr, filename=filetoopen))
             except Exception as e:
-                system.report_static_error(UnknownError, {e})
+                error = system.report_static_error(UnknownError, e)
 
         elif command == current_commands[13]:    #help, Display help message
             try:
                 help.run(args[0])
             except IndexError:
-                system.report_static_error(NonexistentParameter)
+                error = system.report_static_error(NonexistentParameter)
             except Exception as e:
-                system.report_static_error(UnknownError, e)
+                error = system.report_static_error(UnknownError, e)
         
         elif command == current_commands[14]:    #sysos, Display system configuration
-            sysos.config()
-            system.refresh_prefrences()
-            system.update_commands()
-            system.update_colors()
+            try:
+                sysos.config()
+                system.refresh_prefrences()
+            except _curses.error as e:
+                error = system.report_static_error(ScreenSizeError, e)
 
         else:
-            system.report_static_error(InvalidCommand)
+            error = system.report_static_error(InvalidCommand)
             fixed = system.did_you_mean(command)
             if fixed == "No fixes available.":
                 system.write(fixed)
             else:
-                system.write(f"{system.did_you_mean(command)}", "If you want to automatically execute this,", "type \"aexe\"", color=ADVICE)
+                system.write(f"{system.did_you_mean(command)}", "If you want to automatically execute this,", f"type \"{current_commands[12]}\"", color=ADVICE)
                 if args != []:
                     autorun = system.did_you_mean(command, return_fix=True)[0] + " " + " ".join(args)
                 else:
                     autorun = system.did_you_mean(command, return_fix=True)[0]
-                
-
     except KeyboardInterrupt:
         print()
         system.report_static_error(UserInterrupt)
