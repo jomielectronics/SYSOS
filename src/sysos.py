@@ -189,14 +189,12 @@ ScreenSizeError = CustomError(
 # -----------------------------
 class NecessaryFunctions:
     def refresh_prefrences(self):
-        self.update_commands()
-        self.update_colors()
-        global active_preset, OUTPUT_COLORS, FILE_COLORS
+        global active_preset, OUTPUT_COLORS, FILE_COLORS, data
         """Refreshes the system's preferences."""
         try:
             with open(config_path, "r+") as f:
                 data = toml.load(f)
-        except Exception:
+        except Exception as e:
             data = {
                     "selected_preset": active_preset,
                     "output_colors": OUTPUT_COLORS,
@@ -205,13 +203,15 @@ class NecessaryFunctions:
             
             with open(config_path, "w+") as f:
                 toml.dump(data, f)
-
+            # print(e)
         # Assign sections to variables
         active_preset = data.get("selected_preset", "None")  # Default to "None" if missing
         OUTPUT_COLORS = data.get("output_colors", {})
         FILE_COLORS = data.get("file_colors", {})
         # print(FILE_COLORS)
-            
+        
+        self.update_commands()
+        self.update_colors()
     def disable_command_flow(self):
         os.system("stty -ixon")
 
