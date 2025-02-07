@@ -1,8 +1,8 @@
-selected_preset = "SYSOS"
+selected_preset = "Unix"
 
 [output_colors]
 Error = "red"
-Warning = "orange"
+Warning = "light_green"
 SystemOut = "yellow"
 Advice = "magenta"
 Other = "white"

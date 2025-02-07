@@ -32,10 +32,10 @@ import _curses
 # -----------------------------
 # DEFINE VARIABLES
 # -----------------------------
-vsn = "0.3.1"  # The SYSOS version
+vsn = "0.4.7"  # The SYSOS version
 throttle_speed = 0  # Speed for processing operations
 config_version = "0.9.11"  # Configuration tool version
-GITHUB = "https://github.com/jomielec/SYSOS/issues"  # GitHub repository link
+GITHUB = "https://github.com/jomielec/SYSOS/"  # GitHub repository link
 first_time_running = True  # Is this the first run of the program?
 username = os.environ.get("LOGNAME") or os.environ.get(
     "USER") or os.environ.get("USERNAME")
@@ -184,6 +184,9 @@ CacheEmpty = CustomError(
     "Cache is empty", ERROR_CODES["SEG_FAULT"])
 ScreenSizeError = CustomError(
     "Screen size is too small to run this command", ERROR_CODES["IO_ERR"])
+InvalidParameter = CustomError(
+    "An unrecognized parameter was given", ERROR_CODES["INV_ARG"])
+
 # -----------------------------
 # DEFINE SYSTEM CLASSES
 # -----------------------------
@@ -325,7 +328,7 @@ class NecessaryFunctions:
                 f"* FATAL INTERNAL ERROR!\n* Error msg: <{error.message}>\n* Program stated: <{custom_error_message}>\n* Compiler: <e{error.code}>", ERROR))
         else:
             print(colored(
-                f"* FATAL INTERNAL ERROR!\n* Please report the issue on GitHub ({GITHUB})\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", ERROR))
+                f"* FATAL INTERNAL ERROR!\n* Please report the issue on GitHub ({GITHUB}/issues)\n* Error msg: <{error.message}>\n* Compiler: <e{error.code}>", ERROR))
         sys.exit(error.code)
 
     def report_static_error(self, error, custom_error_message=''):
@@ -1056,15 +1059,23 @@ while running:
                         
                     except _curses.error as e:
                         error = system.report_static_error(ScreenSizeError, e)
+
                 elif args[0] == "active-preset":
                     system.write(F"Currently using \"{active_preset}\" commands", color=SYSTEM_OUT)
+
+                elif args[0] == "version":
+                    system.write(f"Currently running SYSOS version {vsn}", f"On {GITHUB}", color=SYSTEM_OUT)
+                
+                else:
+                    error = system.report_static_error(InvalidParameter)
+
             except IndexError:
                 error = system.report_static_error(NonexistentParameter)
             except Exception as e:
                 error = system.report_static_error(UnknownError, e)
 
         else:
-            system.report_static_error(InvalidCommand)
+            error = system.report_static_error(InvalidCommand)
             fixed = system.did_you_mean(command)
             print(fixed)
             if fixed == "No fixes available.":
