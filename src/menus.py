@@ -1,6 +1,9 @@
 import curses
 import toml
 import os
+import sys
+import subprocess
+
 class Menu:
     def __init__(self, version) -> None:
 
@@ -67,6 +70,9 @@ class Menu:
         with open(config_path, "w") as f:
             toml.dump(data, f)
 
+    def reset_terminal_colors(self):
+        """ Fully resets terminal colors to avoid ANSI issues """
+        subprocess.run(["tput", "reset"])  # Works in most shells
 
     def show_title(self, w, h, stdscr, menu, v_offset=1):
         # Initialize color pair 1 (red text on default background)
@@ -211,6 +217,7 @@ class Menu:
                     self.display_message(stdscr, "Exiting...", color=curses.A_BOLD)
                     stdscr.refresh()
                     curses.napms(1000)  # Pause for 1 second
+                    self.reset_terminal_colors()
                     break
                 elif current_row == self.main_menus.index("Command Presets"):
                     self.command_presets(stdscr)

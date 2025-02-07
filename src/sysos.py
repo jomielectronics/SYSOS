@@ -274,7 +274,8 @@ class NecessaryFunctions:
         PROGRAM = FILE_COLORS["Program"]
         OTHER = FILE_COLORS["Other"]
 
-    def did_you_mean(self, item, matches=current_commands, return_fix=False):
+    def did_you_mean(self, item, return_fix=False):
+        matches = current_commands
         """Get closes command to the one entered
 
         Args:
@@ -284,7 +285,7 @@ class NecessaryFunctions:
         Returns:
             str: A simple message describing that it couldn't find that
         """
-        fix = difflib.get_close_matches(item, matches)
+        fix = difflib.get_close_matches(item, matches)[0]
         if return_fix:
             if fix:
                 return fix
@@ -292,7 +293,7 @@ class NecessaryFunctions:
                 return None
         else:
             if fix:
-                return f"Maybe you meant '{', '.join(fix)}'?"
+                return f"Maybe you meant '{fix}'?"
             return "No fixes available."
 
 
@@ -1050,6 +1051,7 @@ while running:
             try:
                 sysos.config()
                 system.refresh_prefrences()
+                
             except _curses.error as e:
                 error = system.report_static_error(ScreenSizeError, e)
 

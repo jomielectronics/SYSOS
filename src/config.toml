@@ -1,4 +1,4 @@
-selected_preset = "Unix"
+selected_preset = ""
 
 [output_colors]
 Error = "red"
