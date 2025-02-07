@@ -1047,25 +1047,35 @@ while running:
             except Exception as e:
                 error = system.report_static_error(UnknownError, e)
         
-        elif command == current_commands[14]:    #sysos, Display system configuration
+        elif command == current_commands[14]:    #sysos, Display system info
             try:
-                sysos.config()
-                system.refresh_prefrences()
-                
-            except _curses.error as e:
-                error = system.report_static_error(ScreenSizeError, e)
+                if args[0] == "config":
+                    try:
+                        sysos.config()
+                        system.refresh_prefrences()
+                        
+                    except _curses.error as e:
+                        error = system.report_static_error(ScreenSizeError, e)
+                elif args[0] == "active-preset":
+                    system.write(F"Currently using \"{active_preset}\" commands", color=SYSTEM_OUT)
+            except IndexError:
+                error = system.report_static_error(NonexistentParameter)
+            except Exception as e:
+                error = system.report_static_error(UnknownError, e)
 
         else:
-            error = system.report_static_error(InvalidCommand)
+            system.report_static_error(InvalidCommand)
             fixed = system.did_you_mean(command)
+
             if fixed == "No fixes available.":
                 system.write(fixed)
             else:
                 system.write(f"{system.did_you_mean(command)}", "If you want to automatically execute this,", f"type \"{current_commands[12]}\"", color=ADVICE)
                 if args != []:
-                    autorun = system.did_you_mean(command, return_fix=True)[0] + " " + " ".join(args)
+                    autorun = system.did_you_mean(command, return_fix=True) + " " + " ".join(args)
                 else:
-                    autorun = system.did_you_mean(command, return_fix=True)[0]
+                    autorun = system.did_you_mean(command, return_fix=True)
+
     except KeyboardInterrupt:
         print()
         system.report_static_error(UserInterrupt)
