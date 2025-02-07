@@ -1083,7 +1083,7 @@ while running:
             fixed = system.did_you_mean(command)
             
             if fixed == "No fixes available.":
-                system.write(fixed)
+                system.write(fixed, color=ADVICE)
             else:
                 system.write(f"{system.did_you_mean(command)}", "If you want to automatically execute this,", f"type \"{current_commands[12]}\"", color=ADVICE)
                 if args != []:
