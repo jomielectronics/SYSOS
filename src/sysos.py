@@ -288,7 +288,11 @@ class NecessaryFunctions:
         Returns:
             str: A simple message describing that it couldn't find that
         """
-        fix = difflib.get_close_matches(item, matches)[0]
+        try:
+            fix = difflib.get_close_matches(item, matches)[0]
+        except Exception:
+            fix = ""
+
         if return_fix:
             if fix:
                 return fix
@@ -1077,7 +1081,7 @@ while running:
         else:
             error = system.report_static_error(InvalidCommand)
             fixed = system.did_you_mean(command)
-            print(fixed)
+            
             if fixed == "No fixes available.":
                 system.write(fixed)
             else:
@@ -1092,5 +1096,7 @@ while running:
         system.report_static_error(UserInterrupt)
         system.write(
             "SYSTEM ADVICE", f"If you want to terminate, please use <{current_commands[4]}>", color=ADVICE)
-    except IndexError:
-        system.report_static_error(InvalidCommand)
+    
+    except Exception as e:
+        print()
+        system.report_fatal_error(e)
