@@ -34,7 +34,7 @@ import _curses
 # -----------------------------
 vsn = "0.3.1"  # The SYSOS version
 throttle_speed = 0  # Speed for processing operations
-config_version = "0.9.9"  # Configuration tool version
+config_version = "0.9.11"  # Configuration tool version
 GITHUB = "https://github.com/jomielec/SYSOS/issues"  # GitHub repository link
 first_time_running = True  # Is this the first run of the program?
 username = os.environ.get("LOGNAME") or os.environ.get(
@@ -1066,7 +1066,7 @@ while running:
         else:
             system.report_static_error(InvalidCommand)
             fixed = system.did_you_mean(command)
-
+            print(fixed)
             if fixed == "No fixes available.":
                 system.write(fixed)
             else:

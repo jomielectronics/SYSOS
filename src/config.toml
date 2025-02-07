@@ -2,7 +2,7 @@ selected_preset = "SYSOS"
 
 [output_colors]
 Error = "red"
-Warning = "light_green"
+Warning = "orange"
 SystemOut = "yellow"
 Advice = "magenta"
 Other = "white"
