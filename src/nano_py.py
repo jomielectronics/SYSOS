@@ -18,7 +18,7 @@ class NanoPy:
             filedir = self.current_dir + "/" + self.filename
             with open(filedir, 'r') as f:
                 for line in f.readlines():
-                    self.content.append(line.strip())
+                    self.content.append(line.rstrip())
 
         if not self.content:
             self.content = [""]
