@@ -1082,6 +1082,7 @@ while running:
             overflow = os.system(tmp)
 
             if overflow == 32512:
+                system.clear_output_lines(1)
                 error = system.report_static_error(InvalidCommand)
                 fixed = system.did_you_mean(command)
                 
