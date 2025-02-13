@@ -1079,17 +1079,20 @@ while running:
                 error = system.report_static_error(UnknownError, e)
 
         else:
-            error = system.report_static_error(InvalidCommand)
-            fixed = system.did_you_mean(command)
-            
-            if fixed == "No fixes available.":
-                system.write(fixed, color=ADVICE)
-            else:
-                system.write(f"{system.did_you_mean(command)}", "If you want to automatically execute this,", f"type \"{current_commands[12]}\"", color=ADVICE)
-                if args != []:
-                    autorun = system.did_you_mean(command, return_fix=True) + " " + " ".join(args)
+            overflow = os.system(tmp)
+
+            if overflow == 32512:
+                error = system.report_static_error(InvalidCommand)
+                fixed = system.did_you_mean(command)
+                
+                if fixed == "No fixes available.":
+                    system.write(fixed, color=ADVICE)
                 else:
-                    autorun = system.did_you_mean(command, return_fix=True)
+                    system.write(f"{system.did_you_mean(command)}", "If you want to automatically execute this,", f"type \"{current_commands[12]}\"", color=ADVICE)
+                    if args != []:
+                        autorun = system.did_you_mean(command, return_fix=True) + " " + " ".join(args)
+                    else:
+                        autorun = system.did_you_mean(command, return_fix=True)
 
     except KeyboardInterrupt:
         print()
